@@ -1305,11 +1305,26 @@ export default function App() {
 
             if (dbProfile && dbProfile.length > 0) {
               const prof = dbProfile[0];
-              if (prof.company_name) setCompanyName(prof.company_name);
-              if (prof.company_tagline) setCompanyTag(prof.company_tagline);
-              if (prof.company_logo) setCompanyLogo(prof.company_logo);
-              if (prof.company_address) setCompanyAddress(prof.company_address);
-              if (prof.company_phone) setCompanyPhone(prof.company_phone);
+              if (prof.company_name) {
+                setCompanyName(prof.company_name);
+                localStorage.setItem("neutruck_company_name", prof.company_name);
+              }
+              if (prof.company_tagline) {
+                setCompanyTag(prof.company_tagline);
+                localStorage.setItem("neutruck_company_tagline", prof.company_tagline);
+              }
+              if (prof.company_logo) {
+                setCompanyLogo(prof.company_logo);
+                localStorage.setItem("neutruck_company_logo", prof.company_logo);
+              }
+              if (prof.company_address) {
+                setCompanyAddress(prof.company_address);
+                localStorage.setItem("neutruck_company_address", prof.company_address);
+              }
+              if (prof.company_phone) {
+                setCompanyPhone(prof.company_phone);
+                localStorage.setItem("neutruck_company_phone", prof.company_phone);
+              }
               if (prof.sig_prepared_by) setSigPreparedBy(prof.sig_prepared_by);
               if (prof.sig_checked_by) setSigCheckedBy(prof.sig_checked_by);
               if (prof.sig_approved_by) setSigApprovedBy(prof.sig_approved_by);
@@ -2504,9 +2519,10 @@ export default function App() {
   };
 
   if (checkingLicense || loading) {
+    const startupName = (companyName && companyName.trim()) || localStorage.getItem("neutruck_company_name") || "NeuTruck";
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0e1a", color: "#00d4ff", fontFamily: "sans-serif" }}>
-        <h2>🚛 Starting {companyName || "NeuTruck"} Engine...</h2>
+        <h2>🚛 Starting {startupName} Engine...</h2>
       </div>
     );
   }
