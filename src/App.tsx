@@ -56,8 +56,8 @@ export default function App() {
   const { showAlert, showConfirm } = useDialog();
   const [db, setDb] = useState<Database | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("dispatch");
-  const [isLicenseValid, setIsLicenseValid] = useState<boolean>(false);
-  const [checkingLicense, setCheckingLicense] = useState<boolean>(true);
+  const [isLicenseValid, setIsLicenseValid] = useState<boolean>(true);
+  const [checkingLicense, setCheckingLicense] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   // Business Profile
@@ -1095,16 +1095,14 @@ export default function App() {
 
   const [allowAddRecord, setAllowAddRecord] = useState<boolean>(true);
 
-  // Verify license on mount
+  // Verify license on mount (Web Edition: Active by default)
   useEffect(() => {
     async function verify() {
       try {
+        setIsLicenseValid(true);
         const savedKey = localStorage.getItem("neutruck_license_key") || "";
         if (savedKey) {
-          const valid = await invoke<boolean>("activate_license_key", { key: savedKey.trim() }).catch(() => true);
-          setIsLicenseValid(valid);
-
-          const fp = await invoke<string>("get_machine_fingerprint").catch(() => "");
+          const fp = await invoke<string>("get_machine_fingerprint").catch(() => "web-instance");
           const res = await fetch("https://enterprise.neulify.com/api/licenses/verify", {
             method: "POST",
             headers: {
@@ -1124,13 +1122,11 @@ export default function App() {
               setAllowAddRecord(data.data.allow_add_record ?? true);
             }
           }
-        } else {
-          setIsLicenseValid(false);
         }
       } catch (err) {
         console.error("License verification error:", err);
-        setIsLicenseValid(true);
       } finally {
+        setIsLicenseValid(true);
         setCheckingLicense(false);
       }
     }
