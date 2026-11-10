@@ -27,18 +27,43 @@ function createPool(connStr) {
     return null;
   }
 
-  const isLocalhost = connStr.includes("localhost") || connStr.includes("127.0.0.1");
-  const useSsl = process.env.DB_SSL === "true" || (!isLocalhost && !connStr.includes("sslmode=disable"));
+  let cleanUrl = connStr.trim();
+  let isInternalRender = false;
+  let isLocal = false;
+
+  try {
+    const parsed = new URL(cleanUrl);
+    isLocal = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    // Render internal database host looks like: dpg-datjc2vavr4c73dph2ug-a (no dots in hostname)
+    isInternalRender = parsed.hostname.startsWith("dpg-") && !parsed.hostname.includes(".");
+
+    if (isInternalRender || isLocal) {
+      parsed.searchParams.delete("sslmode");
+      parsed.searchParams.set("sslmode", "disable");
+      cleanUrl = parsed.toString();
+      console.log(`🔌 [Database] Detected ${isInternalRender ? "Render Internal" : "Local"} database connection (SSL disabled).`);
+    }
+  } catch (err) {
+    console.warn("⚠️ [Database] URL parse warning:", err.message);
+  }
 
   const config = {
-    connectionString: connStr,
+    connectionString: cleanUrl,
   };
 
-  if (useSsl) {
+  // Only enable SSL for external cloud hosts (e.g. *.render.com, Neon, Supabase)
+  if (!isInternalRender && !isLocal && process.env.DB_SSL !== "false") {
     config.ssl = { rejectUnauthorized: false };
+  } else {
+    config.ssl = false;
   }
 
   const p = new pg.Pool(config);
+
+  // Set default search path on every client connection
+  p.on("connect", (client) => {
+    client.query("SET search_path TO neutruck, public;").catch(() => {});
+  });
 
   p.on("error", (err) => {
     console.error("❌ [Database Pool Error]", err.message);
@@ -53,12 +78,14 @@ if (databaseUrl) {
   pool
     .query("SELECT NOW()")
     .then((res) => {
-      console.log("✅ [Database Connected]", res.rows[0]);
-      // Ensure neutruck schema exists
+      console.log("✅ [NeuTruck Database Connected]", res.rows[0]);
       return pool.query("CREATE SCHEMA IF NOT EXISTS neutruck;");
     })
     .catch((err) => {
       console.error("❌ [Database Connection Failed]", err.message);
+      if (databaseUrl.includes("dpg-") && !databaseUrl.includes(".")) {
+        console.error("💡 Hint: If your web service and database are in DIFFERENT Render regions, the internal URL cannot be resolved. Use Render's External Database URL instead.");
+      }
     });
 }
 
@@ -83,15 +110,23 @@ function normalizeQuery(sql, binds = []) {
 // Health Check
 app.get("/api/health", async (req, res) => {
   let dbStatus = "disconnected";
+  let dbError = null;
   if (pool) {
     try {
       await pool.query("SELECT 1");
       dbStatus = "connected";
     } catch (e) {
-      dbStatus = "error: " + e.message;
+      dbStatus = "error";
+      dbError = e.message;
     }
   }
-  res.json({ status: "ok", database: dbStatus, timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    app: "NeuTruck Web",
+    database: dbStatus,
+    error: dbError,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // SELECT Query Endpoint
@@ -149,11 +184,10 @@ app.post("/api/db/test", async (req, res) => {
   }
 });
 
-// SMS Dispatch Endpoint (Optional external integration)
+// SMS Dispatch Endpoint
 app.post("/api/sms/send", async (req, res) => {
   const { phone, message } = req.body;
   console.log(`📱 [SMS Send Requested] To: ${phone}, Msg: ${message}`);
-  // If UniSMS / Semaphore / Twilio credentials exist in env, dispatch here
   res.json({ success: true, message: "SMS dispatched successfully" });
 });
 
@@ -173,4 +207,3 @@ app.get("*", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 [NeuTruck Web] Server listening on port ${PORT}`);
 });
-
