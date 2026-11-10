@@ -39,3 +39,4 @@ export async function invoke<T = any>(cmd: string, args: Record<string, any> = {
       return true as unknown as T;
   }
 }
+

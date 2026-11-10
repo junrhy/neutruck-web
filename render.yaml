@@ -14,3 +14,4 @@ services:
         sync: false # Set this in Render Dashboard to your PostgreSQL connection string
       - key: DB_SSL
         value: "true"
+
