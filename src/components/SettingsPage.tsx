@@ -1086,10 +1086,11 @@ function DatabaseTabSection() {
 
   const fetchDbDetails = async () => {
     try {
-      const activeDb = await invoke<string>("get_current_db_path");
-      const customDb = await invoke<string | null>("get_custom_db_path_setting");
+      const activeDb = String((await invoke<string>("get_current_db_path")) || "");
+      const rawCustomDb = await invoke<string | null>("get_custom_db_path_setting");
+      const customDb = typeof rawCustomDb === "string" ? rawCustomDb : "";
       setCurrentDbPath(activeDb);
-      setCustomDbPathSetting(customDb || "");
+      setCustomDbPathSetting(customDb);
       if (customDb && (customDb.startsWith("postgres://") || customDb.startsWith("postgresql://"))) {
         setPostgresConnString(customDb);
         setDbSubTab("postgres");
@@ -1235,12 +1236,13 @@ function DatabaseTabSection() {
   let activeEngineLabel = "Local Offline Storage";
   let activeEngineBadge = "📁 Local SQLite";
   let isRemoteDbActive = false;
-  if (customDbPathSetting) {
-    if (customDbPathSetting.startsWith("postgres://") || customDbPathSetting.startsWith("postgresql://")) {
+  const safeDbSetting = typeof customDbPathSetting === "string" ? customDbPathSetting : "";
+  if (safeDbSetting) {
+    if (safeDbSetting.startsWith("postgres://") || safeDbSetting.startsWith("postgresql://")) {
       activeEngineLabel = "Cloud Database (PostgreSQL)";
       activeEngineBadge = "☁️ PostgreSQL";
       isRemoteDbActive = true;
-    } else if (customDbPathSetting.startsWith("mssql://") || customDbPathSetting.startsWith("sqlserver://") || customDbPathSetting.includes("Server=")) {
+    } else if (safeDbSetting.startsWith("mssql://") || safeDbSetting.startsWith("sqlserver://") || safeDbSetting.includes("Server=")) {
       activeEngineLabel = "Office Database (MS SQL Server)";
       activeEngineBadge = "🏢 MS SQL Server";
       isRemoteDbActive = true;
