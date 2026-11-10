@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: neutruck-web
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false # Set this in Render Dashboard to your PostgreSQL connection string
+      - key: DB_SSL
+        value: "true"
