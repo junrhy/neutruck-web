@@ -65,8 +65,17 @@ export default function SettingsPage({
   db,
 }: SettingsPageProps) {
   const { user } = useAuth();
-  const isAdmin = user && (user.username === "admin" || user.permissions?.includes("*"));
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() => (!user ? "license" : "profile"));
+  const isAdmin = Boolean(
+    user && (
+      user.username?.toLowerCase() === "admin" ||
+      String(user.role_id) === "1" ||
+      user.role_id === "admin" ||
+      user.permissions?.includes("*") ||
+      user.permissions?.includes("settings") ||
+      user.permissions?.some((p) => p.startsWith("settings"))
+    )
+  );
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [tempName, setTempName] = useState(companyName);
   const [tempTag, setTempTag] = useState(companyTag);
   const [tempLogo, setTempLogo] = useState(companyLogo);
@@ -95,7 +104,7 @@ export default function SettingsPage({
   } | null>(null);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [isLicensedAndPaid, setIsLicensedAndPaid] = useState<boolean>(true);
+  const [_isLicensedAndPaid, setIsLicensedAndPaid] = useState<boolean>(true);
   const [serverLicenseData, setServerLicenseData] = useState<{
     allow_db_settings?: boolean;
     allow_storage_settings?: boolean;
@@ -198,24 +207,10 @@ export default function SettingsPage({
   };
 
   const isTabDisabled = (tab: SettingsTab) => {
-    if (!isLicensedAndPaid && tab !== "license") return true;
+    if (isAdmin) return false;
     const tabObj = SETTINGS_TABS.find((t) => t.id === tab);
-    if (tabObj?.adminOnly && (!user || !isAdmin)) return true;
+    if (tabObj?.adminOnly && !isAdmin) return true;
     if (tabObj?.requireAuth && !user) return true;
-
-    if (tab === "database") {
-      return !(serverLicenseData?.allow_db_settings ?? false);
-    }
-    if (tab === "storage") {
-      return !(serverLicenseData?.allow_storage_settings ?? false);
-    }
-    if (tab === "developer") {
-      return !(serverLicenseData?.allow_developer_settings ?? false);
-    }
-    if (tab === "sms") {
-      return !(serverLicenseData?.allow_sms_settings ?? false);
-    }
-
     return false;
   };
 
@@ -235,10 +230,10 @@ export default function SettingsPage({
         {/* Left Sidebar Menu */}
         <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {SETTINGS_TABS.map((t) => {
-            const isDbHidden = t.id === "database" && !(serverLicenseData?.allow_db_settings ?? false);
-            const isStorageHidden = t.id === "storage" && !(serverLicenseData?.allow_storage_settings ?? false);
-            const isDevHidden = t.id === "developer" && !(serverLicenseData?.allow_developer_settings ?? false);
-            const isSmsHidden = t.id === "sms" && !(serverLicenseData?.allow_sms_settings ?? false);
+            const isDbHidden = !isAdmin && t.id === "database" && !(serverLicenseData?.allow_db_settings ?? true);
+            const isStorageHidden = !isAdmin && t.id === "storage" && !(serverLicenseData?.allow_storage_settings ?? true);
+            const isDevHidden = !isAdmin && t.id === "developer" && !(serverLicenseData?.allow_developer_settings ?? true);
+            const isSmsHidden = !isAdmin && t.id === "sms" && !(serverLicenseData?.allow_sms_settings ?? true);
 
             if (isDbHidden || isStorageHidden || isDevHidden || isSmsHidden) {
               return null;
@@ -247,11 +242,13 @@ export default function SettingsPage({
             const disabled = isTabDisabled(t.id);
             const active = activeTab === t.id;
 
-            let tabLockReason = "License must be active & paid to access settings";
-            if (!isLicensedAndPaid && t.id !== "license") {
-              tabLockReason = "License must be active & paid to access settings";
-            } else if (t.adminOnly && (!user || !isAdmin)) {
-              tabLockReason = "Administrator access required";
+            let tabLockReason = "";
+            if (disabled) {
+              if (t.adminOnly && !isAdmin) {
+                tabLockReason = "Administrator access required";
+              } else if (!user) {
+                tabLockReason = "Login required";
+              }
             }
 
             return (
