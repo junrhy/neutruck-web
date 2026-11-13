@@ -31,22 +31,20 @@ function createGeofenceCenterIcon(radiusMeters: number): L.DivIcon {
       <div style="
         width: 48px;
         height: 48px;
-        display: flex;
-        align-items: center;
-        justifyContent: center;
         position: relative;
         cursor: grab;
+        box-sizing: border-box;
       ">
-        <!-- Floating Dynamic Radius Pill -->
+        <!-- Floating Dynamic Radius Pill (Exact Center X) -->
         <div style="
           position: absolute;
-          bottom: 50px;
+          bottom: calc(100% + 6px);
           left: 50%;
           transform: translateX(-50%);
           background: #0f172a;
           color: #00d4ff;
           border: 1px solid #00d4ff;
-          padding: 2px 8px;
+          padding: 3px 9px;
           border-radius: 12px;
           font-size: 11px;
           font-weight: 700;
@@ -54,36 +52,46 @@ function createGeofenceCenterIcon(radiusMeters: number): L.DivIcon {
           box-shadow: 0 4px 12px rgba(0,0,0,0.6);
           pointer-events: none;
           letter-spacing: 0.3px;
+          box-sizing: border-box;
         ">
           ${radiusLabel}
         </div>
 
-        <!-- Outer Radar Pulse Halo -->
+        <!-- Outer Radar Pulse Halo (Exact Center X & Y) -->
         <div style="
           position: absolute;
-          width: 44px;
-          height: 44px;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 46px;
+          height: 46px;
           border-radius: 50%;
           border: 2px solid #00d4ff;
           background: rgba(0, 212, 255, 0.22);
+          box-sizing: border-box;
           pointer-events: none;
           box-shadow: 0 0 14px rgba(0, 212, 255, 0.6);
         "></div>
 
-        <!-- Centered SVG Location Pin Badge -->
+        <!-- Centered SVG Location Pin Badge (Exact Center X & Y) -->
         <div style="
-          width: 32px;
-          height: 32px;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           background: #00d4ff;
           display: flex;
           align-items: center;
-          justifyContent: center;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+          justify-content: center;
+          box-shadow: 0 3px 12px rgba(0,0,0,0.5);
           border: 2px solid #ffffff;
+          box-sizing: border-box;
           z-index: 2;
         ">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display: block; margin: auto;">
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
             <circle cx="12" cy="10" r="3" fill="#0f172a"></circle>
           </svg>
