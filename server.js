@@ -107,6 +107,12 @@ if (databaseUrl) {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           details JSONB
         );
+        ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS geofence_enabled BOOLEAN DEFAULT FALSE;
+        ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_latitude NUMERIC(10, 7);
+        ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_longitude NUMERIC(10, 7);
+        ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_radius_meters INTEGER DEFAULT 1000;
+        ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS geofence_label VARCHAR(255);
+        ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_geofences JSONB;
       `).catch((e) => console.warn("⚠️ [Security Tables Setup Warning]", e.message));
     })
     .catch((err) => {

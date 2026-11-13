@@ -14,6 +14,30 @@ export default function UserManagement({ db }: UserManagementProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [userPassword, setUserPassword] = useState("password123");
+  const [fetchingGps, setFetchingGps] = useState(false);
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setFetchingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setEditingUser((prev) => ({
+          ...prev!,
+          allowed_latitude: Number(pos.coords.latitude.toFixed(6)),
+          allowed_longitude: Number(pos.coords.longitude.toFixed(6)),
+        }));
+        setFetchingGps(false);
+      },
+      (err) => {
+        alert("Failed to acquire device GPS coordinates: " + err.message);
+        setFetchingGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const loadData = async () => {
     if (!db) {
@@ -53,6 +77,12 @@ export default function UserManagement({ db }: UserManagementProps) {
           username: u.username,
           role_id: String(u.role_id),
           is_active: u.is_active === 1 || u.is_active === true || u.is_active === "1",
+          geofence_enabled: Boolean(u.geofence_enabled),
+          allowed_latitude: u.allowed_latitude !== null && u.allowed_latitude !== undefined ? Number(u.allowed_latitude) : null,
+          allowed_longitude: u.allowed_longitude !== null && u.allowed_longitude !== undefined ? Number(u.allowed_longitude) : null,
+          allowed_radius_meters: u.allowed_radius_meters ? Number(u.allowed_radius_meters) : 1000,
+          geofence_label: u.geofence_label || "",
+          allowed_geofences: typeof u.allowed_geofences === "string" ? JSON.parse(u.allowed_geofences) : (u.allowed_geofences || null),
         }))
       );
       setRoles(
@@ -93,22 +123,65 @@ export default function UserManagement({ db }: UserManagementProps) {
 
       const isActive = Boolean(editingUser.is_active);
       const roleIdStr = String(editingUser.role_id || "1");
+      const geofenceEnabled = Boolean(editingUser.geofence_enabled);
+      const allowedLat = editingUser.allowed_latitude !== undefined && editingUser.allowed_latitude !== null && editingUser.allowed_latitude !== ("" as any)
+        ? Number(editingUser.allowed_latitude)
+        : null;
+      const allowedLng = editingUser.allowed_longitude !== undefined && editingUser.allowed_longitude !== null && editingUser.allowed_longitude !== ("" as any)
+        ? Number(editingUser.allowed_longitude)
+        : null;
+      const allowedRadius = editingUser.allowed_radius_meters ? Number(editingUser.allowed_radius_meters) : 1000;
+      const geofenceLabel = editingUser.geofence_label?.trim() || "";
 
       if (editingUser.id) {
         const userIdStr = String(editingUser.id);
         const query = isPg
-          ? "UPDATE neutruck.users SET name = $1, role_id = $2, is_active = ($3 = 1) WHERE id = $4"
-          : "UPDATE users SET name = ?, role_id = ?, is_active = ? WHERE id = ?";
+          ? `UPDATE neutruck.users 
+             SET name = $1, role_id = $2, is_active = ($3 = 1),
+                 geofence_enabled = ($4 = 1), allowed_latitude = $5, allowed_longitude = $6,
+                 allowed_radius_meters = $7, geofence_label = $8
+             WHERE id = $9`
+          : `UPDATE users 
+             SET name = ?, role_id = ?, is_active = ?,
+                 geofence_enabled = ?, allowed_latitude = ?, allowed_longitude = ?,
+                 allowed_radius_meters = ?, geofence_label = ?
+             WHERE id = ?`;
         
-        const binds = [editingUser.name, roleIdStr, isActive ? 1 : 0, userIdStr];
+        const binds = [
+          editingUser.name,
+          roleIdStr,
+          isActive ? 1 : 0,
+          geofenceEnabled ? 1 : 0,
+          allowedLat,
+          allowedLng,
+          allowedRadius,
+          geofenceLabel,
+          userIdStr,
+        ];
         await db.execute(query, binds);
       } else {
         const newId = `USR-${Date.now()}`;
         const query = isPg
-          ? "INSERT INTO neutruck.users (id, name, username, password_hash, role_id, is_active) VALUES ($1, $2, $3, $4, $5, ($6 = 1))"
-          : "INSERT INTO users (id, name, username, password_hash, role_id, is_active) VALUES (?, ?, ?, ?, ?, ?)";
+          ? `INSERT INTO neutruck.users 
+             (id, name, username, password_hash, role_id, is_active, geofence_enabled, allowed_latitude, allowed_longitude, allowed_radius_meters, geofence_label)
+             VALUES ($1, $2, $3, $4, $5, ($6 = 1), ($7 = 1), $8, $9, $10, $11)`
+          : `INSERT INTO users 
+             (id, name, username, password_hash, role_id, is_active, geofence_enabled, allowed_latitude, allowed_longitude, allowed_radius_meters, geofence_label)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         
-        const binds = [newId, editingUser.name, editingUser.username?.trim(), userPassword, roleIdStr, isActive ? 1 : 0];
+        const binds = [
+          newId,
+          editingUser.name,
+          editingUser.username?.trim(),
+          userPassword,
+          roleIdStr,
+          isActive ? 1 : 0,
+          geofenceEnabled ? 1 : 0,
+          allowedLat,
+          allowedLng,
+          allowedRadius,
+          geofenceLabel,
+        ];
         await db.execute(query, binds);
       }
       setIsFormOpen(false);
@@ -234,6 +307,159 @@ export default function UserManagement({ db }: UserManagementProps) {
               </div>
             </div>
 
+            {/* Geolocation Access Restriction Section */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid var(--border)",
+                borderRadius: "10px",
+                padding: "1rem",
+                marginTop: "0.25rem",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <span>📍</span> Geolocation Access Restriction
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: "0.15rem" }}>
+                    Restrict this user so they can only access the web app while physically present at an authorized facility, terminal, or garage.
+                  </div>
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editingUser?.geofence_enabled)}
+                    onChange={(e) =>
+                      setEditingUser({
+                        ...editingUser!,
+                        geofence_enabled: e.target.checked,
+                        allowed_radius_meters: editingUser?.allowed_radius_meters || 1000,
+                      })
+                    }
+                  />
+                  <span
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      color: editingUser?.geofence_enabled ? "var(--primary)" : "var(--text-dim)",
+                    }}
+                  >
+                    {editingUser?.geofence_enabled ? "Restricted (Geofence Enforced)" : "Unrestricted (Access Anywhere)"}
+                  </span>
+                </label>
+              </div>
+
+              {editingUser?.geofence_enabled && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "1rem",
+                    marginTop: "1rem",
+                    paddingTop: "0.85rem",
+                    borderTop: "1px solid var(--border)",
+                  }}
+                >
+                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "1rem" }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Facility / Geofence Label *</label>
+                      <input
+                        type="text"
+                        required={editingUser.geofence_enabled}
+                        className="form-input"
+                        placeholder="e.g. Mandaue Central Garage / Dispatch Hub"
+                        value={editingUser?.geofence_label || ""}
+                        onChange={(e) => setEditingUser({ ...editingUser!, geofence_label: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Target Latitude *</label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        required={editingUser.geofence_enabled}
+                        className="form-input"
+                        placeholder="e.g. 10.334185"
+                        value={editingUser?.allowed_latitude ?? ""}
+                        onChange={(e) =>
+                          setEditingUser({
+                            ...editingUser!,
+                            allowed_latitude: e.target.value ? parseFloat(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Target Longitude *</label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        required={editingUser.geofence_enabled}
+                        className="form-input"
+                        placeholder="e.g. 123.945281"
+                        value={editingUser?.allowed_longitude ?? ""}
+                        onChange={(e) =>
+                          setEditingUser({
+                            ...editingUser!,
+                            allowed_longitude: e.target.value ? parseFloat(e.target.value) : null,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                      <label style={{ fontSize: "0.8rem", color: "var(--text-dim)", margin: 0 }}>Allowed Radius:</label>
+                      <div style={{ display: "flex", gap: "0.35rem" }}>
+                        {[250, 500, 1000, 2000, 5000].map((radius) => (
+                          <button
+                            key={radius}
+                            type="button"
+                            className={`btn btn-xs ${
+                              editingUser?.allowed_radius_meters === radius ? "btn-primary" : "btn-outline"
+                            }`}
+                            onClick={() => setEditingUser({ ...editingUser!, allowed_radius_meters: radius })}
+                          >
+                            {radius >= 1000 ? `${radius / 1000} km` : `${radius} m`}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        min="50"
+                        step="50"
+                        className="form-input form-input-sm"
+                        style={{ width: "90px", fontSize: "0.8rem" }}
+                        value={editingUser?.allowed_radius_meters || 1000}
+                        onChange={(e) =>
+                          setEditingUser({
+                            ...editingUser!,
+                            allowed_radius_meters: parseInt(e.target.value, 10) || 1000,
+                          })
+                        }
+                        title="Custom radius in meters"
+                      />
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>meters</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={handleGetCurrentLocation}
+                      disabled={fetchingGps}
+                      style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+                    >
+                      <span>📍</span> {fetchingGps ? "Acquiring Device GPS..." : "Set to My Current Location"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)}>
                 Cancel
@@ -256,6 +482,7 @@ export default function UserManagement({ db }: UserManagementProps) {
                 <th>User Account</th>
                 <th>Username</th>
                 <th>Assigned Role</th>
+                <th>Location Access</th>
                 <th>Status</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
@@ -263,7 +490,7 @@ export default function UserManagement({ db }: UserManagementProps) {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", color: "var(--text-dim)", padding: "2rem" }}>
+                  <td colSpan={6} style={{ textAlign: "center", color: "var(--text-dim)", padding: "2rem" }}>
                     No staff user accounts found. Click <strong>"➕ Register Staff User"</strong> above or check your database connection.
                   </td>
                 </tr>
@@ -294,6 +521,29 @@ export default function UserManagement({ db }: UserManagementProps) {
                       <td style={{ fontFamily: "monospace", color: "var(--text-muted)" }}>{u.username}</td>
                       <td>
                         <span className="badge badge-purple">🛡️ {roleObj ? roleObj.name : "Custom Role"}</span>
+                      </td>
+                      <td>
+                        {u.geofence_enabled && u.allowed_latitude !== null && u.allowed_latitude !== undefined ? (
+                          <span
+                            className="badge badge-warning"
+                            title={`Restricted to ${u.geofence_label || "Facility"} within ${u.allowed_radius_meters || 1000}m`}
+                            style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                          >
+                            <span>📍</span>
+                            <span>{u.geofence_label || "Geofenced"} ({u.allowed_radius_meters ? (u.allowed_radius_meters >= 1000 ? `${u.allowed_radius_meters / 1000}km` : `${u.allowed_radius_meters}m`) : "1km"})</span>
+                          </span>
+                        ) : (
+                          <span
+                            className="badge"
+                            style={{
+                              background: "rgba(255,255,255,0.05)",
+                              color: "var(--text-dim)",
+                              border: "1px solid var(--border)",
+                            }}
+                          >
+                            🌐 Anywhere
+                          </span>
+                        )}
                       </td>
                       <td>
                         <span className={`badge ${u.is_active ? "badge-success" : "badge-danger"}`}>

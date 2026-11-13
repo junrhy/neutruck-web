@@ -24,6 +24,7 @@ import UserLogin from "./components/auth/UserLogin";
 import ChangePasswordModal from "./components/auth/ChangePasswordModal";
 import GuestLandingPage from "./components/GuestLandingPage";
 import UnauthorizedIpScreen from "./components/UnauthorizedIpScreen";
+import GeofenceGatekeeper from "./components/GeofenceGatekeeper";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useDialog } from "./components/common/CustomDialogModal";
 import { invoke } from "@tauri-apps/api/core";
@@ -2783,7 +2784,7 @@ function AppContent({
   handleUpdateTruckModel,
   handleDeleteTruckModel,
 }: any) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="app-container">
@@ -2827,7 +2828,7 @@ function AppContent({
             <GuestLandingPage />
           )
         ) : (
-          <>
+          <GeofenceGatekeeper user={user} onLogout={logout}>
             {activeTab === "dispatch" && (
               <DispatchBoardPage
                 jobs={jobs}
@@ -3071,7 +3072,7 @@ function AppContent({
                 db={db}
               />
             )}
-          </>
+          </GeofenceGatekeeper>
         )}
       </div>
 

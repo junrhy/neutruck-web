@@ -334,6 +334,12 @@ CREATE TABLE IF NOT EXISTS neutruck.users (
     role_id VARCHAR(64) DEFAULT 'dispatcher',
     is_active BOOLEAN DEFAULT TRUE,
     permissions JSONB,
+    geofence_enabled BOOLEAN DEFAULT FALSE,
+    allowed_latitude NUMERIC(10, 7),
+    allowed_longitude NUMERIC(10, 7),
+    allowed_radius_meters INTEGER DEFAULT 1000,
+    geofence_label VARCHAR(255),
+    allowed_geofences JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -395,8 +401,13 @@ CREATE TABLE IF NOT EXISTS neugate.visitor_passes (
     check_out_time TIMESTAMP WITH TIME ZONE
 );
 
--- Schema Migrations / Idempotent Alter Statements
-ALTER TABLE neutruck.unit_inspection_logs ADD COLUMN IF NOT EXISTS fuel_level_percent NUMERIC(5, 2);
+-- Geolocation Per-User Restriction Migrations
+ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS geofence_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_latitude NUMERIC(10, 7);
+ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_longitude NUMERIC(10, 7);
+ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_radius_meters INTEGER DEFAULT 1000;
+ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS geofence_label VARCHAR(255);
+ALTER TABLE neutruck.users ADD COLUMN IF NOT EXISTS allowed_geofences JSONB;
 ALTER TABLE neutruck.unit_inspection_logs ADD COLUMN IF NOT EXISTS fuel_liters NUMERIC(10, 2);
 
 -- IP Access Whitelist & System Security Settings

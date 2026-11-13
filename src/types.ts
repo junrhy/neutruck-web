@@ -334,6 +334,14 @@ export interface AppSettings {
   mobileGatewayPort: string;
 }
 
+export interface GeofenceZone {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -342,6 +350,12 @@ export interface User {
   is_active: boolean;
   force_password_change?: boolean;
   permissions?: string[];
+  geofence_enabled?: boolean;
+  allowed_latitude?: number | null;
+  allowed_longitude?: number | null;
+  allowed_radius_meters?: number | null;
+  geofence_label?: string | null;
+  allowed_geofences?: GeofenceZone[] | null;
 }
 
 export interface Role {
