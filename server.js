@@ -98,6 +98,15 @@ if (databaseUrl) {
         INSERT INTO neutruck.security_settings (setting_key, setting_value)
         VALUES ('ip_whitelist_enabled', 'false')
         ON CONFLICT (setting_key) DO NOTHING;
+        CREATE TABLE IF NOT EXISTS neutruck.backup_history (
+          id VARCHAR(64) PRIMARY KEY,
+          filename VARCHAR(255) NOT NULL,
+          file_size_bytes BIGINT DEFAULT 0,
+          record_count INTEGER DEFAULT 0,
+          created_by VARCHAR(64) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          details JSONB
+        );
       `).catch((e) => console.warn("⚠️ [Security Tables Setup Warning]", e.message));
     })
     .catch((err) => {
@@ -477,6 +486,494 @@ app.post("/api/security/admin-unlock", async (req, res) => {
     message: `IP address ${clientIp} has been authorized successfully.`,
     clientIp,
   });
+});
+
+// ==============================================================================
+// DATA BACKUP, EXPORT, IMPORT & HISTORY
+// ==============================================================================
+
+const BACKUP_TABLES_META = [
+  { name: "company_profile", label: "Company Profile", pk: ["id"], uniqueCols: ["id"] },
+  { name: "roles", label: "Roles", pk: ["id"], uniqueCols: ["name"] },
+  { name: "permissions", label: "Permissions", pk: ["id"], uniqueCols: ["id"] },
+  { name: "role_permissions", label: "Role Permissions", pk: ["role_id", "permission_id"], uniqueCols: ["role_id", "permission_id"] },
+  { name: "truck_models", label: "Truck Models", pk: ["id"], uniqueCols: ["name"] },
+  { name: "roro_ports", label: "RoRo Ports", pk: ["id"], uniqueCols: ["id"] },
+  { name: "roro_routes", label: "RoRo Routes", pk: ["id"], uniqueCols: ["id"] },
+  { name: "dropoff_destinations", label: "Dropoff Destinations", pk: ["id"], uniqueCols: ["id"] },
+  { name: "client_shippers", label: "Clients / Shippers", pk: ["id"], uniqueCols: ["id", "company_name"] },
+  { name: "driver_profiles", label: "Driver Profiles", pk: ["id"], uniqueCols: ["id"] },
+  { name: "helper_profiles", label: "Helper Profiles", pk: ["id"], uniqueCols: ["id"] },
+  { name: "allowed_ips", label: "Allowed IPs", pk: ["id"], uniqueCols: ["ip_address"] },
+  { name: "security_settings", label: "Security Settings", pk: ["setting_key"], uniqueCols: ["setting_key"] },
+  { name: "truck_vehicles", label: "Truck Vehicles", pk: ["id"], uniqueCols: ["plate_number"] },
+  { name: "dispatch_jobs", label: "Dispatch Jobs", pk: ["id"], uniqueCols: ["waybill_number"] },
+  { name: "waybill_receipts", label: "Waybill Receipts", pk: ["id"], uniqueCols: ["id"] },
+  { name: "fuel_topup_logs", label: "Fuel Topup Logs", pk: ["id"], uniqueCols: ["id"] },
+  { name: "unit_inspection_logs", label: "Unit Inspection Logs", pk: ["id"], uniqueCols: ["id"] },
+  { name: "maintenance_logs", label: "Maintenance Logs", pk: ["id"], uniqueCols: ["id"] },
+  { name: "sms_logs", label: "SMS Logs", pk: ["id"], uniqueCols: ["id"] }
+];
+
+let fallbackBackupHistory = [];
+
+// Helper to check for existing record by primary key or unique columns
+async function findExistingRecord(client, meta, row) {
+  // Check by PK first
+  const pkConditions = [];
+  const pkValues = [];
+  let paramIdx = 1;
+  for (const col of meta.pk) {
+    if (row[col] !== undefined && row[col] !== null) {
+      pkConditions.push(`${col} = $${paramIdx++}`);
+      pkValues.push(row[col]);
+    }
+  }
+
+  if (pkConditions.length === meta.pk.length && pkConditions.length > 0) {
+    const pkRes = await client.query(
+      `SELECT * FROM neutruck.${meta.name} WHERE ${pkConditions.join(" AND ")} LIMIT 1`,
+      pkValues
+    );
+    if (pkRes.rows.length > 0) {
+      return { isDuplicate: true, existingRow: pkRes.rows[0], matchedBy: meta.pk.join("+") };
+    }
+  }
+
+  // Check unique columns (e.g. plate_number, waybill_number, ip_address, name)
+  if (meta.uniqueCols && meta.uniqueCols.length > 0) {
+    for (const uCol of meta.uniqueCols) {
+      if (!meta.pk.includes(uCol) && row[uCol] !== undefined && row[uCol] !== null && row[uCol] !== "") {
+        const uRes = await client.query(
+          `SELECT * FROM neutruck.${meta.name} WHERE ${uCol} = $1 LIMIT 1`,
+          [row[uCol]]
+        );
+        if (uRes.rows.length > 0) {
+          return { isDuplicate: true, existingRow: uRes.rows[0], matchedBy: uCol };
+        }
+      }
+    }
+  }
+
+  return { isDuplicate: false, existingRow: null };
+}
+
+// 1. GET Live Table Stats
+app.get("/api/backup/stats", async (req, res) => {
+  if (!pool) {
+    return res.json({ totalRecords: 0, tables: [] });
+  }
+
+  try {
+    let totalRecords = 0;
+    const tables = [];
+
+    for (const meta of BACKUP_TABLES_META) {
+      try {
+        const countRes = await pool.query(`SELECT COUNT(*) FROM neutruck.${meta.name}`);
+        const count = parseInt(countRes.rows[0].count, 10) || 0;
+        totalRecords += count;
+        tables.push({
+          name: meta.name,
+          label: meta.label,
+          count
+        });
+      } catch (err) {
+        tables.push({
+          name: meta.name,
+          label: meta.label,
+          count: 0
+        });
+      }
+    }
+
+    res.json({ totalRecords, tables });
+  } catch (err) {
+    console.error("❌ Backup stats error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. GET Export Full JSON Backup
+app.get("/api/backup/export", async (req, res) => {
+  const exportedBy = req.query.exported_by || "admin";
+
+  if (!pool) {
+    return res.status(503).json({ error: "Database not connected. Cannot perform full backup." });
+  }
+
+  try {
+    const backupData = {
+      app: "NeuTruck",
+      version: "1.0",
+      exported_at: new Date().toISOString(),
+      exported_by: exportedBy,
+      summary: {
+        total_tables: BACKUP_TABLES_META.length,
+        total_records: 0,
+        table_counts: {}
+      },
+      tables: {}
+    };
+
+    let totalRecords = 0;
+
+    for (const meta of BACKUP_TABLES_META) {
+      try {
+        const queryRes = await pool.query(`SELECT * FROM neutruck.${meta.name}`);
+        const rows = queryRes.rows || [];
+        backupData.tables[meta.name] = rows;
+        backupData.summary.table_counts[meta.name] = rows.length;
+        totalRecords += rows.length;
+      } catch (err) {
+        console.warn(`⚠️ Warning fetching table ${meta.name} for backup:`, err.message);
+        backupData.tables[meta.name] = [];
+        backupData.summary.table_counts[meta.name] = 0;
+      }
+    }
+
+    backupData.summary.total_records = totalRecords;
+
+    const jsonString = JSON.stringify(backupData, null, 2);
+    const fileSizeBytes = Buffer.byteLength(jsonString, "utf8");
+
+    // Format filename with local timestamp
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const filename = `neutruck-backup-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.json`;
+
+    // Record into backup_history table
+    const backupId = "bkp_" + Date.now();
+    try {
+      await pool.query(
+        `INSERT INTO neutruck.backup_history (id, filename, file_size_bytes, record_count, created_by, details)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          backupId,
+          filename,
+          fileSizeBytes,
+          totalRecords,
+          exportedBy,
+          JSON.stringify({
+            summary: backupData.summary.table_counts,
+            source: "export",
+            version: "1.0"
+          })
+        ]
+      );
+    } catch (hErr) {
+      console.warn("⚠️ Failed to record backup_history in DB:", hErr.message);
+    }
+
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(jsonString);
+  } catch (err) {
+    console.error("❌ Backup export error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. GET Backup History
+app.get("/api/backup/history", async (req, res) => {
+  if (!pool) {
+    return res.json({ history: fallbackBackupHistory });
+  }
+
+  try {
+    const historyRes = await pool.query(
+      `SELECT id, filename, file_size_bytes, record_count, created_by, created_at, details
+       FROM neutruck.backup_history
+       ORDER BY created_at DESC
+       LIMIT 100`
+    );
+    res.json({ history: historyRes.rows || [] });
+  } catch (err) {
+    console.error("❌ Fetch backup history error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4. DELETE Backup History Item
+app.delete("/api/backup/history/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!pool) {
+    fallbackBackupHistory = fallbackBackupHistory.filter((item) => item.id !== id);
+    return res.json({ success: true });
+  }
+
+  try {
+    await pool.query("DELETE FROM neutruck.backup_history WHERE id = $1", [id]);
+    res.json({ success: true, message: "History record deleted successfully." });
+  } catch (err) {
+    console.error("❌ Delete backup history error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. POST Validate Backup File (Pre-Import Dry Run)
+app.post("/api/backup/validate", async (req, res) => {
+  const { backupData } = req.body;
+  if (!backupData || typeof backupData !== "object") {
+    return res.status(400).json({ valid: false, error: "Invalid backup data payload. Expected JSON object." });
+  }
+
+  const tables = backupData.tables || backupData.data || backupData;
+  if (!tables || typeof tables !== "object") {
+    return res.status(400).json({ valid: false, error: "Unrecognized backup file format: missing 'tables' or data content." });
+  }
+
+  if (!pool) {
+    return res.status(503).json({ valid: false, error: "Database not connected. Cannot perform validation against live data." });
+  }
+
+  const client = await pool.connect();
+  try {
+    let totalIncoming = 0;
+    let totalNew = 0;
+    let totalDuplicates = 0;
+    let totalInvalid = 0;
+    const tableSummaries = [];
+
+    for (const meta of BACKUP_TABLES_META) {
+      const rows = tables[meta.name];
+      if (!Array.isArray(rows)) continue;
+
+      let tableIncoming = rows.length;
+      let tableNew = 0;
+      let tableDuplicates = 0;
+      let tableInvalid = 0;
+      const sampleDuplicates = [];
+
+      for (const row of rows) {
+        if (!row || typeof row !== "object") {
+          tableInvalid++;
+          continue;
+        }
+
+        // Check if primary key exists on row
+        const hasPk = meta.pk.every((col) => row[col] !== undefined && row[col] !== null);
+        if (!hasPk) {
+          tableInvalid++;
+          continue;
+        }
+
+        const dupResult = await findExistingRecord(client, meta, row);
+        if (dupResult.isDuplicate) {
+          tableDuplicates++;
+          if (sampleDuplicates.length < 5) {
+            const label = row.plate_number || row.waybill_number || row.company_name || row.name || row.id || `Row (PK: ${meta.pk.map((c) => row[c]).join(",")})`;
+            sampleDuplicates.push(String(label));
+          }
+        } else {
+          tableNew++;
+        }
+      }
+
+      totalIncoming += tableIncoming;
+      totalNew += tableNew;
+      totalDuplicates += tableDuplicates;
+      totalInvalid += tableInvalid;
+
+      tableSummaries.push({
+        table: meta.name,
+        label: meta.label,
+        incomingCount: tableIncoming,
+        newCount: tableNew,
+        duplicateCount: tableDuplicates,
+        invalidCount: tableInvalid,
+        sampleDuplicates
+      });
+    }
+
+    res.json({
+      valid: true,
+      version: backupData.version || "1.0",
+      exportedAt: backupData.exported_at || null,
+      exportedBy: backupData.exported_by || null,
+      totalIncoming,
+      newRecords: totalNew,
+      duplicateRecords: totalDuplicates,
+      invalidRecords: totalInvalid,
+      tables: tableSummaries
+    });
+  } catch (err) {
+    console.error("❌ Validation error:", err.message);
+    res.status(500).json({ valid: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// 6. POST Import Backup Data
+app.post("/api/backup/import", async (req, res) => {
+  const { backupData, duplicateStrategy = "skip", importedBy = "admin" } = req.body;
+  if (!backupData || typeof backupData !== "object") {
+    return res.status(400).json({ success: false, error: "Invalid backup data payload." });
+  }
+
+  const tables = backupData.tables || backupData.data || backupData;
+  if (!tables || typeof tables !== "object") {
+    return res.status(400).json({ success: false, error: "Missing tables data in backup payload." });
+  }
+
+  if (!pool) {
+    return res.status(503).json({ success: false, error: "Database not connected." });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    let totalInserted = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    let totalErrors = 0;
+    const tableBreakdown = {};
+
+    for (const meta of BACKUP_TABLES_META) {
+      const rows = tables[meta.name];
+      if (!Array.isArray(rows) || rows.length === 0) continue;
+
+      let inserted = 0;
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (const row of rows) {
+        if (!row || typeof row !== "object") {
+          errors++;
+          continue;
+        }
+
+        try {
+          const dupResult = await findExistingRecord(client, meta, row);
+
+          if (dupResult.isDuplicate) {
+            if (duplicateStrategy === "skip") {
+              skipped++;
+              continue;
+            } else if (duplicateStrategy === "overwrite") {
+              // Update existing record
+              const existing = dupResult.existingRow;
+              const updateCols = [];
+              const updateVals = [];
+              let paramIdx = 1;
+
+              for (const [key, val] of Object.entries(row)) {
+                // Do not update primary keys
+                if (meta.pk.includes(key)) continue;
+                // Special safety guard: Do not overwrite system admin credentials or disable admin
+                if (meta.name === "users" && (existing.username === "admin" || row.username === "admin")) {
+                  if (key === "password_hash" || key === "is_active" || key === "role_id") continue;
+                }
+
+                updateCols.push(`${key} = $${paramIdx++}`);
+                updateVals.push(typeof val === "object" && val !== null ? JSON.stringify(val) : val);
+              }
+
+              if (updateCols.length > 0) {
+                // Add WHERE condition based on existing row PK
+                const whereConditions = [];
+                for (const pkCol of meta.pk) {
+                  whereConditions.push(`${pkCol} = $${paramIdx++}`);
+                  updateVals.push(existing[pkCol]);
+                }
+
+                await client.query(
+                  `UPDATE neutruck.${meta.name} SET ${updateCols.join(", ")} WHERE ${whereConditions.join(" AND ")}`,
+                  updateVals
+                );
+                updated++;
+              } else {
+                skipped++;
+              }
+            }
+          } else {
+            // Insert new record
+            const insertCols = [];
+            const insertVals = [];
+            const placeholders = [];
+            let paramIdx = 1;
+
+            for (const [key, val] of Object.entries(row)) {
+              insertCols.push(key);
+              placeholders.push(`$${paramIdx++}`);
+              insertVals.push(typeof val === "object" && val !== null ? JSON.stringify(val) : val);
+            }
+
+            if (insertCols.length > 0) {
+              await client.query(
+                `INSERT INTO neutruck.${meta.name} (${insertCols.join(", ")}) VALUES (${placeholders.join(", ")})`,
+                insertVals
+              );
+              inserted++;
+            }
+          }
+        } catch (rowErr) {
+          console.warn(`⚠️ Error processing row in ${meta.name}:`, rowErr.message);
+          errors++;
+        }
+      }
+
+      totalInserted += inserted;
+      totalUpdated += updated;
+      totalSkipped += skipped;
+      totalErrors += errors;
+
+      tableBreakdown[meta.name] = { inserted, updated, skipped, errors };
+    }
+
+    await client.query("COMMIT");
+
+    // Record import action in backup_history
+    const importId = "imp_" + Date.now();
+    const filename = `Data Import (${duplicateStrategy === "skip" ? "Skip Duplicates" : "Overwrite"})`;
+    const jsonStr = JSON.stringify(backupData);
+
+    try {
+      await pool.query(
+        `INSERT INTO neutruck.backup_history (id, filename, file_size_bytes, record_count, created_by, details)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          importId,
+          filename,
+          Buffer.byteLength(jsonStr, "utf8"),
+          totalInserted + totalUpdated,
+          importedBy,
+          JSON.stringify({
+            summary: tableBreakdown,
+            source: "import",
+            strategy: duplicateStrategy,
+            inserted: totalInserted,
+            updated: totalUpdated,
+            skipped: totalSkipped,
+            errors: totalErrors
+          })
+        ]
+      );
+    } catch (hErr) {
+      console.warn("⚠️ Failed to record import in backup_history:", hErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Import completed: ${totalInserted} inserted, ${totalUpdated} updated, ${totalSkipped} skipped, ${totalErrors} errors.`,
+      stats: {
+        inserted: totalInserted,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        errors: totalErrors,
+        details: tableBreakdown
+      }
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("❌ Backup import error:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  } finally {
+    client.release();
+  }
 });
 
 

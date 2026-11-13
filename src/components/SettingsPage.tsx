@@ -5,6 +5,7 @@ import Database from "@tauri-apps/plugin-sql";
 import UserManagement from "./admin/UserManagement";
 import RoleManagement from "./admin/RoleManagement";
 import SecurityIpManagement from "./admin/SecurityIpManagement";
+import DataBackupManagement from "./admin/DataBackupManagement";
 import { useAuth } from "../hooks/useAuth";
 import { SMSRecipientTarget } from "../types";
 import { SUPPORTED_TIMEZONES, getAppTimezone, setAppTimezone } from "../utils/dateUtils";
@@ -37,7 +38,7 @@ interface SettingsPageProps {
   db: Database | null;
 }
 
-export type SettingsTab = "profile" | "appearance" | "sms" | "users" | "security" | "database" | "storage" | "license" | "developer";
+export type SettingsTab = "profile" | "appearance" | "sms" | "users" | "security" | "backup" | "database" | "storage" | "license" | "developer";
 
 const SETTINGS_TABS: { id: SettingsTab; icon: string; label: string; desc: string; adminOnly?: boolean; requireAuth?: boolean }[] = [
   { id: "profile", icon: "🚚", label: "Company Profile", desc: "Logo, receipt & billing details", requireAuth: true },
@@ -45,6 +46,7 @@ const SETTINGS_TABS: { id: SettingsTab; icon: string; label: string; desc: strin
   { id: "sms", icon: "💬", label: "SMS Gateway", desc: "Text message notifications", adminOnly: true },
   { id: "users", icon: "👥", label: "Users & Roles", desc: "Staff accounts & access levels", adminOnly: true },
   { id: "security", icon: "🛡️", label: "IP Whitelist", desc: "Network IP access control", adminOnly: true },
+  { id: "backup", icon: "💾", label: "Data Backup", desc: "Export, import & history logs", adminOnly: true },
   { id: "database", icon: "🌐", label: "DB Connection", desc: "Local & cloud database setup", adminOnly: true },
   { id: "storage", icon: "📁", label: "File Storage", desc: "Document & photo attachments", adminOnly: true },
   { id: "license", icon: "🔑", label: "License & Payment", desc: "App key & plan status", adminOnly: true },
@@ -105,6 +107,7 @@ export default function SettingsPage({
       (activeTab === "sms" ||
         activeTab === "users" ||
         activeTab === "security" ||
+        activeTab === "backup" ||
         activeTab === "database" ||
         activeTab === "storage" ||
         activeTab === "license" ||
@@ -246,12 +249,13 @@ export default function SettingsPage({
         {/* Left Sidebar Menu */}
         <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {SETTINGS_TABS.map((t) => {
-            // If not admin, only show Company Profile and Appearance (hide SMS Gateway, Users & Roles, IP Whitelist, DB Connection, File Storage, License & Payment, and Dev Settings)
+            // If not admin, only show Company Profile and Appearance (hide SMS Gateway, Users & Roles, IP Whitelist, Data Backup, DB Connection, File Storage, License & Payment, and Dev Settings)
             if (
               !isAdmin &&
               (t.id === "sms" ||
                 t.id === "users" ||
                 t.id === "security" ||
+                t.id === "backup" ||
                 t.id === "database" ||
                 t.id === "storage" ||
                 t.id === "license" ||
@@ -848,6 +852,9 @@ export default function SettingsPage({
 
           {/* TAB: SECURITY & IP WHITELIST */}
           {activeTab === "security" && isAdmin && <SecurityIpManagement />}
+
+          {/* TAB: DATA BACKUP & RESTORE */}
+          {activeTab === "backup" && isAdmin && <DataBackupManagement />}
 
           {/* TAB 4: DATABASE */}
           {activeTab === "database" && isAdmin && <DatabaseTabSection />}

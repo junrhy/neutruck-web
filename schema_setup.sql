@@ -416,4 +416,15 @@ CREATE TABLE IF NOT EXISTS neutruck.security_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Data Backup & Snapshot Generation History
+CREATE TABLE IF NOT EXISTS neutruck.backup_history (
+    id VARCHAR(64) PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    file_size_bytes BIGINT DEFAULT 0,
+    record_count INTEGER DEFAULT 0,
+    created_by VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    details JSONB
+);
+
 

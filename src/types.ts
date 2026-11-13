@@ -378,3 +378,66 @@ export interface IpSecurityStatus {
   allowedIps: AllowedIp[];
 }
 
+export interface BackupHistoryEntry {
+  id: string;
+  filename: string;
+  file_size_bytes: number | string;
+  record_count: number;
+  created_by: string;
+  created_at: string;
+  details?: {
+    summary?: Record<string, number>;
+    source?: "export" | "import" | string;
+    version?: string;
+    strategy?: "skip" | "overwrite";
+    inserted?: number;
+    updated?: number;
+    skipped?: number;
+    errors?: number;
+  };
+}
+
+export interface BackupTableStat {
+  name: string;
+  label: string;
+  count: number;
+}
+
+export interface BackupTableValidationSummary {
+  table: string;
+  label: string;
+  incomingCount: number;
+  newCount: number;
+  duplicateCount: number;
+  invalidCount: number;
+  sampleDuplicates: string[];
+}
+
+export interface BackupValidationResult {
+  valid: boolean;
+  error?: string;
+  version?: string;
+  exportedAt?: string | null;
+  exportedBy?: string | null;
+  totalIncoming: number;
+  newRecords: number;
+  duplicateRecords: number;
+  invalidRecords: number;
+  tables: BackupTableValidationSummary[];
+}
+
+export interface BackupImportResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  stats?: {
+    inserted: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+    totalProcessed?: number;
+    details?: Record<string, { inserted: number; updated: number; skipped: number; errors: number }>;
+  };
+}
+
+
