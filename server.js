@@ -77,9 +77,28 @@ if (databaseUrl) {
   // Test connection on startup
   pool
     .query("SELECT NOW()")
-    .then((res) => {
+    .then(async (res) => {
       console.log("✅ [NeuTruck Database Connected]", res.rows[0]);
-      return pool.query("CREATE SCHEMA IF NOT EXISTS neutruck;");
+      await pool.query("CREATE SCHEMA IF NOT EXISTS neutruck;");
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS neutruck.allowed_ips (
+          id VARCHAR(64) PRIMARY KEY,
+          ip_address VARCHAR(64) NOT NULL UNIQUE,
+          label VARCHAR(255) NOT NULL,
+          description TEXT,
+          is_active BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS neutruck.security_settings (
+          setting_key VARCHAR(64) PRIMARY KEY,
+          setting_value TEXT NOT NULL,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO neutruck.security_settings (setting_key, setting_value)
+        VALUES ('ip_whitelist_enabled', 'false')
+        ON CONFLICT (setting_key) DO NOTHING;
+      `).catch((e) => console.warn("⚠️ [Security Tables Setup Warning]", e.message));
     })
     .catch((err) => {
       console.error("❌ [Database Connection Failed]", err.message);
@@ -190,6 +209,276 @@ app.post("/api/sms/send", async (req, res) => {
   console.log(`📱 [SMS Send Requested] To: ${phone}, Msg: ${message}`);
   res.json({ success: true, message: "SMS dispatched successfully" });
 });
+
+// ==============================================================================
+// IP WHITELIST & SECURITY ACCESS CONTROL
+// ==============================================================================
+
+// Helper to extract client IP address
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  let ip = forwarded ? forwarded.split(",")[0].trim() : (req.socket?.remoteAddress || req.ip || "");
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.replace("::ffff:", "");
+  }
+  if (ip === "::1") ip = "127.0.0.1";
+  return ip || "127.0.0.1";
+}
+
+// IP matching (exact match, wildcard prefix, localhost equivalence)
+function ipMatches(clientIp, allowedPattern) {
+  if (!clientIp || !allowedPattern) return false;
+  const c = clientIp.trim();
+  const p = allowedPattern.trim();
+  if (p === "*" || p === "0.0.0.0/0") return true;
+  if (c.toLowerCase() === p.toLowerCase()) return true;
+  if ((c === "127.0.0.1" || c === "::1") && (p === "127.0.0.1" || p === "::1" || p === "localhost")) {
+    return true;
+  }
+  // Wildcard match e.g. 192.168.1.* or 10.0.*
+  if (p.endsWith(".*")) {
+    const prefix = p.slice(0, -2);
+    if (c.startsWith(prefix + ".")) return true;
+  }
+  return false;
+}
+
+// In-memory fallback state if database is in disconnected mode
+let fallbackSecuritySettings = { ip_whitelist_enabled: false };
+let fallbackAllowedIps = [];
+
+// GET IP Security Status & Whitelist List
+app.get("/api/security/ip-status", async (req, res) => {
+  const clientIp = getClientIp(req);
+  let whitelistEnabled = false;
+  let allowedIps = [];
+
+  if (pool) {
+    try {
+      const settingsRes = await pool.query(
+        "SELECT setting_value FROM neutruck.security_settings WHERE setting_key = 'ip_whitelist_enabled' LIMIT 1"
+      );
+      if (settingsRes.rows.length > 0) {
+        whitelistEnabled = settingsRes.rows[0].setting_value === "true";
+      }
+
+      const ipsRes = await pool.query(
+        "SELECT * FROM neutruck.allowed_ips ORDER BY created_at DESC"
+      );
+      allowedIps = ipsRes.rows;
+    } catch (err) {
+      console.warn("⚠️ [IP Status DB Query Error, using fallback]:", err.message);
+      whitelistEnabled = fallbackSecuritySettings.ip_whitelist_enabled;
+      allowedIps = fallbackAllowedIps;
+    }
+  } else {
+    whitelistEnabled = fallbackSecuritySettings.ip_whitelist_enabled;
+    allowedIps = fallbackAllowedIps;
+  }
+
+  // Determine if client is allowed
+  let isAllowed = true;
+  if (whitelistEnabled) {
+    const activeIps = allowedIps.filter((item) => item.is_active === true || item.is_active === 1 || item.is_active === "t");
+    if (activeIps.length === 0) {
+      // If list is empty, avoid completely bricking localhost
+      isAllowed = (clientIp === "127.0.0.1" || clientIp === "localhost");
+    } else {
+      isAllowed = activeIps.some((item) => ipMatches(clientIp, item.ip_address));
+    }
+  }
+
+  res.json({
+    clientIp,
+    whitelistEnabled,
+    isAllowed,
+    allowedIps,
+  });
+});
+
+// Toggle IP Whitelist Enforcement
+app.post("/api/security/ip-whitelist/toggle", async (req, res) => {
+  const { enabled } = req.body;
+  const isEnabled = Boolean(enabled);
+  const clientIp = getClientIp(req);
+
+  fallbackSecuritySettings.ip_whitelist_enabled = isEnabled;
+
+  if (pool) {
+    try {
+      await pool.query(
+        `INSERT INTO neutruck.security_settings (setting_key, setting_value, updated_at)
+         VALUES ('ip_whitelist_enabled', $1, CURRENT_TIMESTAMP)
+         ON CONFLICT (setting_key) DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP`,
+        [String(isEnabled)]
+      );
+
+      // Safety guard: If enabling, ensure the current client's IP is automatically whitelisted so they don't lock themselves out!
+      if (isEnabled) {
+        const checkExisting = await pool.query(
+          "SELECT id FROM neutruck.allowed_ips WHERE ip_address = $1",
+          [clientIp]
+        );
+        if (checkExisting.rows.length === 0) {
+          const id = "ip_" + Date.now();
+          await pool.query(
+            `INSERT INTO neutruck.allowed_ips (id, ip_address, label, description, is_active)
+             VALUES ($1, $2, $3, $4, TRUE)`,
+            [id, clientIp, "Current Device (Admin)", "Auto-authorized when whitelist was enabled"]
+          );
+        }
+      }
+    } catch (err) {
+      console.error("❌ Toggle Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  res.json({ success: true, enabled: isEnabled, clientIp });
+});
+
+// Add or Upsert Allowed IP
+app.post("/api/security/ip-whitelist/add", async (req, res) => {
+  const { ip_address, label, description } = req.body;
+  if (!ip_address || !ip_address.trim()) {
+    return res.status(400).json({ error: "IP address is required." });
+  }
+
+  const cleanIp = ip_address.trim();
+  const cleanLabel = (label && label.trim()) || "Authorized Device";
+  const cleanDesc = (description && description.trim()) || "";
+  const id = "ip_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+
+  if (pool) {
+    try {
+      const result = await pool.query(
+        `INSERT INTO neutruck.allowed_ips (id, ip_address, label, description, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (ip_address) DO UPDATE SET label = $3, description = $4, is_active = TRUE, updated_at = CURRENT_TIMESTAMP
+         RETURNING *`,
+        [id, cleanIp, cleanLabel, cleanDesc]
+      );
+      return res.json({ success: true, item: result.rows[0] });
+    } catch (err) {
+      console.error("❌ Add IP Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  } else {
+    const newItem = { id, ip_address: cleanIp, label: cleanLabel, description: cleanDesc, is_active: true };
+    fallbackAllowedIps.push(newItem);
+    return res.json({ success: true, item: newItem });
+  }
+});
+
+// Delete Allowed IP
+app.post("/api/security/ip-whitelist/delete", async (req, res) => {
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: "ID is required." });
+
+  if (pool) {
+    try {
+      await pool.query("DELETE FROM neutruck.allowed_ips WHERE id = $1", [id]);
+    } catch (err) {
+      console.error("❌ Delete IP Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  } else {
+    fallbackAllowedIps = fallbackAllowedIps.filter((i) => i.id !== id);
+  }
+
+  res.json({ success: true });
+});
+
+// Toggle Active/Inactive Status for an Allowed IP
+app.post("/api/security/ip-whitelist/toggle-active", async (req, res) => {
+  const { id, is_active } = req.body;
+  if (!id) return res.status(400).json({ error: "ID is required." });
+
+  const activeVal = Boolean(is_active);
+
+  if (pool) {
+    try {
+      await pool.query(
+        "UPDATE neutruck.allowed_ips SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+        [activeVal, id]
+      );
+    } catch (err) {
+      console.error("❌ Toggle Active Error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  } else {
+    const item = fallbackAllowedIps.find((i) => i.id === id);
+    if (item) item.is_active = activeVal;
+  }
+
+  res.json({ success: true });
+});
+
+// Admin Unlock from Blocked Screen
+app.post("/api/security/admin-unlock", async (req, res) => {
+  const { username, password, label } = req.body;
+  const clientIp = getClientIp(req);
+
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required." });
+  }
+
+  const cleanUser = username.trim().toLowerCase();
+  let isAdminValid = false;
+
+  // Check built-in fallback admin
+  if (cleanUser === "admin" && password === "password123") {
+    isAdminValid = true;
+  }
+
+  if (!isAdminValid && pool) {
+    try {
+      const userRes = await pool.query(
+        "SELECT * FROM neutruck.users WHERE LOWER(username) = $1 AND is_active = TRUE LIMIT 1",
+        [cleanUser]
+      );
+      if (userRes.rows.length > 0) {
+        const found = userRes.rows[0];
+        if (found.password_hash === password && (found.role_id === 1 || String(found.role_id) === "1" || found.username.toLowerCase() === "admin")) {
+          isAdminValid = true;
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ Admin verification query error:", err.message);
+    }
+  }
+
+  if (!isAdminValid) {
+    return res.status(401).json({ error: "Invalid administrator credentials." });
+  }
+
+  // Whitelist clientIp
+  const id = "ip_" + Date.now();
+  const cleanLabel = (label && label.trim()) || `Authorized by ${cleanUser}`;
+
+  if (pool) {
+    try {
+      await pool.query(
+        `INSERT INTO neutruck.allowed_ips (id, ip_address, label, description, is_active)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (ip_address) DO UPDATE SET label = $3, is_active = TRUE, updated_at = CURRENT_TIMESTAMP`,
+        [id, clientIp, cleanLabel, `Unlocked by admin ${cleanUser}`]
+      );
+    } catch (err) {
+      console.error("❌ Insert unlocked IP error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
+  } else {
+    fallbackAllowedIps.push({ id, ip_address: clientIp, label: cleanLabel, description: `Unlocked by admin ${cleanUser}`, is_active: true });
+  }
+
+  res.json({
+    success: true,
+    message: `IP address ${clientIp} has been authorized successfully.`,
+    clientIp,
+  });
+});
+
 
 // Serve Vite Static Files in Production
 const distPath = path.join(__dirname, "dist");

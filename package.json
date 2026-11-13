@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n \"server,client\" -c \"blue,green\" \"node server.js\" \"vite\"",
+    "dev": "concurrently -n \"server,client\" -c \"blue,green\" \"node --watch server.js\" \"vite\"",
     "dev:client": "vite",
-    "dev:server": "node server.js",
+    "dev:server": "node --watch server.js",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "start": "node server.js",

@@ -4,6 +4,7 @@ import AutoUpdater from "./AutoUpdater";
 import Database from "@tauri-apps/plugin-sql";
 import UserManagement from "./admin/UserManagement";
 import RoleManagement from "./admin/RoleManagement";
+import SecurityIpManagement from "./admin/SecurityIpManagement";
 import { useAuth } from "../hooks/useAuth";
 import { SMSRecipientTarget } from "../types";
 import { SUPPORTED_TIMEZONES, getAppTimezone, setAppTimezone } from "../utils/dateUtils";
@@ -36,13 +37,14 @@ interface SettingsPageProps {
   db: Database | null;
 }
 
-export type SettingsTab = "profile" | "appearance" | "sms" | "users" | "database" | "storage" | "license" | "developer";
+export type SettingsTab = "profile" | "appearance" | "sms" | "users" | "security" | "database" | "storage" | "license" | "developer";
 
 const SETTINGS_TABS: { id: SettingsTab; icon: string; label: string; desc: string; adminOnly?: boolean; requireAuth?: boolean }[] = [
   { id: "profile", icon: "🚚", label: "Company Profile", desc: "Logo, receipt & billing details", adminOnly: true },
   { id: "appearance", icon: "🎨", label: "Appearance", desc: "Themes, colors & wallpaper", requireAuth: true },
   { id: "sms", icon: "💬", label: "SMS Gateway", desc: "Text message notifications", adminOnly: true },
   { id: "users", icon: "👥", label: "Users & Roles", desc: "Staff accounts & access levels", adminOnly: true },
+  { id: "security", icon: "🛡️", label: "IP Whitelist", desc: "Network IP access control", adminOnly: true },
   { id: "database", icon: "🌐", label: "DB Connection", desc: "Local & cloud database setup", adminOnly: true },
   { id: "storage", icon: "📁", label: "File Storage", desc: "Document & photo attachments", adminOnly: true },
   { id: "license", icon: "🔑", label: "License & Payment", desc: "App key & plan status" },
@@ -802,7 +804,7 @@ export default function SettingsPage({
                 </div>
               </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
                 <button type="submit" className="btn btn-primary" disabled={!user}>
                   💾 Save Profile
                 </button>
@@ -824,6 +826,9 @@ export default function SettingsPage({
               <RoleManagement db={db} />
             </div>
           )}
+
+          {/* TAB: SECURITY & IP WHITELIST */}
+          {activeTab === "security" && <SecurityIpManagement />}
 
           {/* TAB 4: DATABASE */}
           {activeTab === "database" && <DatabaseTabSection />}
@@ -1219,7 +1224,7 @@ function DatabaseTabSection() {
     try {
       setLoading(true);
       const targetPath = await invoke<string>("import_db_backup");
-      setMsg({ type: "success", text: `✅ Database restored successfully! Active file updated at: ${targetPath}. Please restart NeuTruck for changes to take full effect.` });
+      setMsg({ type: "success", text: `✅ Database restored successfully! Active file updated at: ${targetPath}. Please restart for changes to take full effect.` });
       fetchDbDetails();
     } catch (err) {
       if (err !== "Import cancelled") {
@@ -1671,11 +1676,11 @@ function LicenseTabSection({ onVerificationChange }: { onVerificationChange?: (i
 
       if (res && res.ok) {
         const data = await res.json().catch(() => null);
-          if (data && data.status === "success") {
-            setServerData(data.data);
-            const isOk = data.data?.is_active && (data.data?.payment_status === "paid" || data.data?.payment_status === "trial");
-            onVerificationChange?.(isOk);
-          }
+        if (data && data.status === "success") {
+          setServerData(data.data);
+          const isOk = data.data?.is_active && (data.data?.payment_status === "paid" || data.data?.payment_status === "trial");
+          onVerificationChange?.(isOk);
+        }
       } else {
         // Fallback local hardware check
         const valid = await invoke<boolean>("activate_license_key", { key: key.trim() }).catch(() => true);
@@ -1755,8 +1760,8 @@ function LicenseTabSection({ onVerificationChange }: { onVerificationChange?: (i
                     serverData.payment_status === "paid"
                       ? "#10b981"
                       : serverData.payment_status === "trial"
-                      ? "#00d4ff"
-                      : "#f43f5e",
+                        ? "#00d4ff"
+                        : "#f43f5e",
                   textTransform: "capitalize",
                 }}
               >

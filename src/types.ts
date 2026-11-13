@@ -360,3 +360,21 @@ export interface TruckModel {
   id?: number;
   name: string;
 }
+
+export interface AllowedIp {
+  id: string;
+  ip_address: string;
+  label: string;
+  description?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface IpSecurityStatus {
+  clientIp: string;
+  whitelistEnabled: boolean;
+  isAllowed: boolean;
+  allowedIps: AllowedIp[];
+}
+

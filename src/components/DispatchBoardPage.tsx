@@ -129,35 +129,166 @@ export default function DispatchBoardPage({
   const availableTrucks = vehicles.filter((v) => v.status === "Available");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Top Banner Stats (5 Cards per Row) */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">🚛</div>
-          <div className="stat-info">
-            <span className="stat-title">Active Trips</span>
-            <span className="stat-number">{jobs.filter((j) => j.deliveryStatus === "In Transit" || j.deliveryStatus === "Dispatched" || j.deliveryStatus === "Port Queueing" || j.deliveryStatus === "Onboard RoRo").length}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      {/* 1. TOP KPI METRICS GRID */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "0.85rem",
+        }}
+      >
+        {/* Card 1: Active Trips */}
+        <div
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius, 12px)",
+            padding: "1rem 1.15rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.85rem",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <div
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "12px",
+              background: "rgba(2, 132, 199, 0.12)",
+              color: "var(--primary)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              flexShrink: 0,
+            }}
+          >
+            🚛
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+              Active Trips
+            </span>
+            <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "var(--text-main)", marginTop: "0.15rem" }}>
+              {jobs.filter((j) => j.deliveryStatus === "In Transit" || j.deliveryStatus === "Dispatched" || j.deliveryStatus === "Port Queueing" || j.deliveryStatus === "Onboard RoRo").length}
+            </span>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">📦</div>
-          <div className="stat-info">
-            <span className="stat-title">Delivered</span>
-            <span className="stat-number">{jobs.filter((j) => j.deliveryStatus === "Delivered").length}</span>
+
+        {/* Card 2: Delivered */}
+        <div
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius, 12px)",
+            padding: "1rem 1.15rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.85rem",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <div
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "12px",
+              background: "rgba(16, 185, 129, 0.12)",
+              color: "var(--success, #10b981)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              flexShrink: 0,
+            }}
+          >
+            📦
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+              Delivered
+            </span>
+            <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "var(--success, #10b981)", marginTop: "0.15rem" }}>
+              {jobs.filter((j) => j.deliveryStatus === "Delivered").length}
+            </span>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">🚚</div>
-          <div className="stat-info">
-            <span className="stat-title">Fleet Ready</span>
-            <span className="stat-number">{availableTrucks.length} / {vehicles.length}</span>
+
+        {/* Card 3: Fleet Ready */}
+        <div
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius, 12px)",
+            padding: "1rem 1.15rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.85rem",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <div
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "12px",
+              background: "rgba(168, 85, 247, 0.12)",
+              color: "var(--purple, #a855f7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              flexShrink: 0,
+            }}
+          >
+            🚚
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+              Fleet Ready
+            </span>
+            <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "var(--text-main)", marginTop: "0.15rem" }}>
+              {availableTrucks.length} <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-muted)" }}>/ {vehicles.length}</span>
+            </span>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">💰</div>
-          <div className="stat-info">
-            <span className="stat-title">Total Freight Revenue</span>
-            <span className="stat-number">
+
+        {/* Card 4: Total Freight Revenue */}
+        <div
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius, 12px)",
+            padding: "1rem 1.15rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.85rem",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <div
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "12px",
+              background: "rgba(245, 158, 11, 0.12)",
+              color: "var(--warning, #f59e0b)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              flexShrink: 0,
+            }}
+          >
+            💰
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+              Freight Revenue
+            </span>
+            <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "var(--text-main)", marginTop: "0.15rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               ₱{jobs
                 .filter((j) => j.deliveryStatus !== "Cancelled" && j.deliveryStatus !== "Draft")
                 .reduce((sum, j) => {
@@ -169,11 +300,41 @@ export default function DispatchBoardPage({
             </span>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">💸</div>
-          <div className="stat-info">
-            <span className="stat-title">Total Trip Expenses</span>
-            <span className="stat-number" style={{ color: "var(--warning)" }}>
+
+        {/* Card 5: Total Trip Expenses */}
+        <div
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius, 12px)",
+            padding: "1rem 1.15rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.85rem",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <div
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "12px",
+              background: "rgba(244, 63, 94, 0.12)",
+              color: "var(--danger, #f43f5e)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              flexShrink: 0,
+            }}
+          >
+            💸
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
+              Trip Expenses
+            </span>
+            <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "var(--warning, #f59e0b)", marginTop: "0.15rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               ₱{jobs
                 .filter((j) => j.deliveryStatus !== "Cancelled" && j.deliveryStatus !== "Draft")
                 .reduce((sum, j) => {
@@ -188,141 +349,251 @@ export default function DispatchBoardPage({
         </div>
       </div>
 
-      {/* Action Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: "0.75rem", flex: 1, minWidth: "280px", flexWrap: "wrap", alignItems: "center" }}>
+      {/* 2. UNIFIED DISPATCH CONTROL HUB CARD */}
+      <div
+        style={{
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius, 14px)",
+          padding: "1.1rem 1.25rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.9rem",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+        }}
+      >
+        {/* Top Control Bar: View Tabs + Actions */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           {/* Active / Archived View Toggle */}
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", padding: "0.2rem", borderRadius: "8px", border: "1px solid var(--border)", flexWrap: "nowrap" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              background: "var(--bg-main)",
+              padding: "0.22rem",
+              borderRadius: "var(--radius-sm, 8px)",
+              border: "1px solid var(--border)",
+            }}
+          >
             <button
               type="button"
               onClick={() => setViewMode("active")}
               style={{
-                padding: "0.45rem 0.9rem",
+                padding: "0.45rem 1rem",
                 borderRadius: "6px",
                 border: "none",
                 background: viewMode === "active" ? "var(--primary)" : "transparent",
-                color: viewMode === "active" ? "#fff" : "var(--text-main)",
-                fontWeight: 600,
-                fontSize: "0.8rem",
+                color: viewMode === "active" ? "#ffffff" : "var(--text-dim)",
+                fontWeight: 700,
+                fontSize: "0.82rem",
                 cursor: "pointer",
-                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                transition: "all 0.15s ease",
               }}
             >
-              📋 Active Dispatches ({jobs.filter((j) => !j.isArchived).length})
+              <span>📋</span> Active Dispatches
+              <span
+                style={{
+                  background: viewMode === "active" ? "rgba(255,255,255,0.25)" : "var(--primary-alpha, rgba(2, 132, 199, 0.12))",
+                  color: viewMode === "active" ? "#ffffff" : "var(--primary)",
+                  padding: "0.08rem 0.45rem",
+                  borderRadius: "10px",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                }}
+              >
+                {jobs.filter((j) => !j.isArchived).length}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode("archived")}
               style={{
-                padding: "0.45rem 0.9rem",
+                padding: "0.45rem 1rem",
                 borderRadius: "6px",
                 border: "none",
-                background: viewMode === "archived" ? "var(--purple)" : "transparent",
-                color: viewMode === "archived" ? "#fff" : "var(--text-main)",
-                fontWeight: 600,
-                fontSize: "0.8rem",
+                background: viewMode === "archived" ? "var(--purple, #a855f7)" : "transparent",
+                color: viewMode === "archived" ? "#ffffff" : "var(--text-dim)",
+                fontWeight: 700,
+                fontSize: "0.82rem",
                 cursor: "pointer",
-                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                transition: "all 0.15s ease",
               }}
             >
-              📦 Archived ({jobs.filter((j) => j.isArchived).length})
+              <span>📦</span> Archived
+              <span
+                style={{
+                  background: viewMode === "archived" ? "rgba(255,255,255,0.25)" : "rgba(168, 85, 247, 0.12)",
+                  color: viewMode === "archived" ? "#ffffff" : "var(--purple, #a855f7)",
+                  padding: "0.08rem 0.45rem",
+                  borderRadius: "10px",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                }}
+              >
+                {jobs.filter((j) => j.isArchived).length}
+              </span>
             </button>
           </div>
 
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Search Waybill, Truck Plate, Driver Name, Client..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, minWidth: "200px" }}
-          />
+          {/* Right Action Controls: Reload & Create Job */}
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+            {/* Unified Reload & Auto-Reload Button Group */}
+            <div
+              style={{
+                display: "inline-flex",
+                borderRadius: "var(--radius-sm, 8px)",
+                border: "1px solid var(--border)",
+                background: "var(--bg-main)",
+                overflow: "hidden",
+                height: "38px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleReloadClick}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--text-main)",
+                  padding: "0 0.85rem",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  whiteSpace: "nowrap",
+                }}
+                title="Reload latest dispatch records"
+              >
+                <span style={{ display: "inline-block", transform: isReloading ? "rotate(360deg)" : "none", transition: "transform 0.6s ease" }}>
+                  🔄
+                </span>
+                {isReloading ? "Reloading..." : "Reload"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoReload(!autoReload)}
+                style={{
+                  border: "none",
+                  borderLeft: "1px solid var(--border)",
+                  background: autoReload ? "var(--primary-alpha)" : "transparent",
+                  color: autoReload ? "var(--primary)" : "var(--text-muted)",
+                  padding: "0 0.65rem",
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  transition: "all 0.2s ease",
+                }}
+                title={autoReload ? "Auto Reload (10s) is ON. Click to turn OFF" : "Click to turn ON Auto Reload (10s)"}
+              >
+                <span
+                  style={{
+                    width: "7px",
+                    height: "7px",
+                    borderRadius: "50%",
+                    background: autoReload ? "var(--success, #10b981)" : "var(--text-muted)",
+                    boxShadow: autoReload ? "0 0 6px var(--success, #10b981)" : "none",
+                  }}
+                />
+                Auto 10s
+              </button>
+            </div>
 
-          {/* Table vs Card Layout Mode Toggle */}
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", padding: "0.2rem", borderRadius: "8px", border: "1px solid var(--border)", flexWrap: "nowrap" }}>
-            <button
-              type="button"
-              onClick={() => setLayoutStyle("table")}
+            {user && !showAddForm && viewMode === "active" && (
+              <button
+                className="btn btn-primary"
+                disabled={!allowAddRecord}
+                onClick={() => {
+                  if (allowAddRecord) setShowAddForm(true);
+                }}
+                title={!allowAddRecord ? "Adding new records is disabled by your license permissions" : "Create new dispatch job"}
+                style={{
+                  height: "38px",
+                  padding: "0 1.15rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                  fontWeight: 700,
+                  fontSize: "0.85rem",
+                  boxShadow: "0 2px 8px var(--primary-alpha)",
+                  opacity: !allowAddRecord ? 0.5 : 1,
+                  cursor: !allowAddRecord ? "not-allowed" : "pointer",
+                }}
+              >
+                <span>➕</span> Create Dispatch Job
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Middle Row: Unified Search, Status Filter & View Modes (all 38px height) */}
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+          {/* Search Box */}
+          <div style={{ position: "relative", flex: 1, minWidth: "240px", display: "flex", alignItems: "center" }}>
+            <span
               style={{
-                padding: "0.45rem 0.65rem",
-                borderRadius: "6px",
-                border: "none",
-                background: layoutStyle === "table" ? "var(--primary)" : "transparent",
-                color: layoutStyle === "table" ? "#fff" : "var(--text-main)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.15s ease",
+                position: "absolute",
+                left: "0.85rem",
+                color: "var(--text-muted)",
+                fontSize: "0.9rem",
+                pointerEvents: "none",
               }}
-              title="Table View"
-              aria-label="Table View"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLayoutStyle("card")}
+              🔍
+            </span>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search by waybill, plate, driver, client, cargo, route..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               style={{
-                padding: "0.45rem 0.65rem",
-                borderRadius: "6px",
-                border: "none",
-                background: layoutStyle === "card" ? "var(--primary)" : "transparent",
-                color: layoutStyle === "card" ? "#fff" : "var(--text-main)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.15s ease",
+                width: "100%",
+                height: "38px",
+                paddingLeft: "2.3rem",
+                paddingRight: search ? "2.2rem" : "0.85rem",
+                fontSize: "0.85rem",
               }}
-              title="Grid Card View"
-              aria-label="Grid Card View"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLayoutStyle("map")}
-              style={{
-                padding: "0.45rem 0.65rem",
-                borderRadius: "6px",
-                border: "none",
-                background: layoutStyle === "map" ? "var(--primary)" : "transparent",
-                color: layoutStyle === "map" ? "#fff" : "var(--text-main)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.15s ease",
-              }}
-              title="Map View"
-              aria-label="Map View"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                <line x1="8" y1="2" x2="8" y2="18" />
-                <line x1="16" y1="6" x2="16" y2="22" />
-              </svg>
-            </button>
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                style={{
+                  position: "absolute",
+                  right: "0.75rem",
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                  padding: "0.2rem",
+                }}
+              >
+                ✕
+              </button>
+            )}
           </div>
 
+          {/* Status Dropdown */}
           <select
             className="form-select"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ minWidth: "160px", width: "auto" }}
+            style={{
+              height: "38px",
+              minWidth: "160px",
+              fontSize: "0.85rem",
+            }}
           >
             <option value="All">All Statuses</option>
             <option value="Draft">Draft</option>
@@ -335,200 +606,242 @@ export default function DispatchBoardPage({
             <option value="Returning / En Route Garage">Returning / Garage</option>
             <option value="Cancelled">Cancelled</option>
           </select>
-        </div>
 
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-          {/* Unified Reload & Auto-Reload Control */}
-          <div style={{ display: "inline-flex", borderRadius: "var(--radius-sm, 6px)", border: "1px solid var(--border)", background: "var(--bg-card, rgba(255,255,255,0.03))", overflow: "hidden" }}>
+          {/* Table / Card / Map View Switcher */}
+          <div
+            style={{
+              display: "inline-flex",
+              height: "38px",
+              background: "var(--bg-main)",
+              padding: "0.2rem",
+              borderRadius: "var(--radius-sm, 8px)",
+              border: "1px solid var(--border)",
+              alignItems: "center",
+            }}
+          >
             <button
               type="button"
-              className="btn btn-outline"
-              style={{ border: "none", borderRadius: 0, padding: "0.5rem 0.85rem", fontSize: "0.85rem", whiteSpace: "nowrap" }}
-              title="Reload latest dispatch & vehicle records from shared database"
-              onClick={handleReloadClick}
+              onClick={() => setLayoutStyle("table")}
+              style={{
+                height: "30px",
+                padding: "0 0.75rem",
+                borderRadius: "6px",
+                border: "none",
+                background: layoutStyle === "table" ? "var(--primary)" : "transparent",
+                color: layoutStyle === "table" ? "#ffffff" : "var(--text-dim)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                transition: "all 0.15s ease",
+              }}
+              title="Table View"
             >
-              <span style={{ display: "inline-block", transform: isReloading ? "rotate(360deg)" : "none", transition: "transform 0.6s ease" }}>
-                🔄
-              </span>{" "}
-              {isReloading ? "Reloading..." : autoReload ? "Reload (Auto On)" : "Reload"}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              <span>Table</span>
             </button>
             <button
               type="button"
-              onClick={() => setAutoReload(!autoReload)}
+              onClick={() => setLayoutStyle("card")}
               style={{
+                height: "30px",
+                padding: "0 0.75rem",
+                borderRadius: "6px",
                 border: "none",
-                borderLeft: "1px solid var(--border)",
-                background: autoReload ? "var(--primary-alpha, rgba(0,212,255,0.15))" : "transparent",
-                color: autoReload ? "var(--primary, #00d4ff)" : "var(--text-muted)",
-                padding: "0.5rem 0.65rem",
-                fontSize: "0.78rem",
-                fontWeight: 700,
+                background: layoutStyle === "card" ? "var(--primary)" : "transparent",
+                color: layoutStyle === "card" ? "#ffffff" : "var(--text-dim)",
                 cursor: "pointer",
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "0.3rem",
-                transition: "all 0.2s ease",
+                gap: "0.35rem",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                transition: "all 0.15s ease",
               }}
-              title={autoReload ? "Auto Reload (10s) is ON. Click to turn OFF" : "Click to turn ON Auto Reload (10s)"}
+              title="Card Grid View"
             >
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: autoReload ? "var(--primary, #00d4ff)" : "#64748b", boxShadow: autoReload ? "0 0 6px var(--primary)" : "none" }}></span>
-              Auto 10s
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+              </svg>
+              <span>Grid</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayoutStyle("map")}
+              style={{
+                height: "30px",
+                padding: "0 0.75rem",
+                borderRadius: "6px",
+                border: "none",
+                background: layoutStyle === "map" ? "var(--primary)" : "transparent",
+                color: layoutStyle === "map" ? "#ffffff" : "var(--text-dim)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                transition: "all 0.15s ease",
+              }}
+              title="Interactive Map View"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                <line x1="8" y1="2" x2="8" y2="18" />
+                <line x1="16" y1="6" x2="16" y2="22" />
+              </svg>
+              <span>Map</span>
             </button>
           </div>
-
-          {user && !showAddForm && viewMode === "active" && (
-            <button
-              className="btn btn-primary"
-              disabled={!allowAddRecord}
-              onClick={() => {
-                if (allowAddRecord) setShowAddForm(true);
-              }}
-              title={!allowAddRecord ? "Adding new records is disabled by your license permissions" : "Create new dispatch job"}
-              style={!allowAddRecord ? { opacity: 0.5, cursor: "not-allowed" } : {}}
-            >
-              ➕ Create Dispatch Job
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Small Truck Filter Buttons Bar */}
-      {allTruckPlates.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.35rem",
-            flexWrap: "wrap",
-            background: "var(--bg-card)",
-            padding: "0.45rem 0.75rem",
-            borderRadius: "8px",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <span
+        {/* Integrated Quick Truck Filter Strip */}
+        {allTruckPlates.length > 0 && (
+          <div
             style={{
-              fontSize: "0.72rem",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              color: "var(--text-dim)",
-              marginRight: "0.25rem",
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              gap: "0.25rem",
+              gap: "0.4rem",
+              flexWrap: "wrap",
+              borderTop: "1px solid var(--border)",
+              paddingTop: "0.75rem",
+              marginTop: "0.15rem",
             }}
           >
-            🚚 Filter Truck:
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setSelectedTruck("All")}
-            style={{
-              padding: "0.18rem 0.5rem",
-              borderRadius: "14px",
-              fontSize: "0.72rem",
-              fontWeight: selectedTruck === "All" ? 700 : 500,
-              border: selectedTruck === "All" ? "1px solid var(--primary)" : "1px solid var(--border)",
-              background: selectedTruck === "All" ? "var(--primary-alpha)" : "rgba(255, 255, 255, 0.03)",
-              color: selectedTruck === "All" ? "var(--primary)" : "var(--text-main)",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.3rem",
-            }}
-          >
-            <span>All Trucks</span>
             <span
               style={{
-                fontSize: "0.68rem",
-                background: selectedTruck === "All" ? "var(--primary)" : "rgba(100, 116, 139, 0.2)",
-                color: selectedTruck === "All" ? "#000" : "var(--text-main)",
-                padding: "0.08rem 0.45rem",
-                borderRadius: "10px",
-                fontWeight: 800,
-                border: selectedTruck === "All" ? "none" : "1px solid rgba(100, 116, 139, 0.25)",
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                color: "var(--text-muted)",
+                marginRight: "0.25rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.3rem",
               }}
             >
-              {jobs.filter((j) => {
-                const isArchived = j.isArchived === true;
-                const matchesView = viewMode === "archived" ? isArchived : !isArchived;
-                const matchesStatus = statusFilter === "All" || j.deliveryStatus === statusFilter;
-                return matchesView && matchesStatus;
-              }).length}
+              🚚 Filter Truck:
             </span>
-          </button>
 
-          {allTruckPlates.map((plate) => {
-            const count = jobs.filter((j) => {
-              const isArchived = j.isArchived === true;
-              const matchesView = viewMode === "archived" ? isArchived : !isArchived;
-              const matchesStatus = statusFilter === "All" || j.deliveryStatus === statusFilter;
-              return matchesView && matchesStatus && j.truckPlate === plate;
-            }).length;
-            const isSelected = selectedTruck === plate;
-
-            return (
-              <button
-                key={plate}
-                type="button"
-                onClick={() => setSelectedTruck(isSelected ? "All" : plate)}
-                style={{
-                  padding: "0.18rem 0.5rem",
-                  borderRadius: "14px",
-                  fontSize: "0.72rem",
-                  fontWeight: isSelected ? 700 : 500,
-                  border: isSelected ? "1px solid var(--primary)" : "1px solid var(--border)",
-                  background: isSelected ? "var(--primary-alpha)" : "rgba(255, 255, 255, 0.03)",
-                  color: isSelected ? "var(--primary)" : "var(--text-main)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.3rem",
-                }}
-              >
-                <span>{plate}</span>
-                <span
-                  style={{
-                    fontSize: "0.68rem",
-                    background: isSelected ? "var(--primary)" : "rgba(100, 116, 139, 0.2)",
-                    color: isSelected ? "#000" : "var(--text-main)",
-                    padding: "0.08rem 0.45rem",
-                    borderRadius: "10px",
-                    fontWeight: 800,
-                    border: isSelected ? "none" : "1px solid rgba(100, 116, 139, 0.25)",
-                  }}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-
-          {selectedTruck !== "All" && (
             <button
               type="button"
               onClick={() => setSelectedTruck("All")}
               style={{
-                padding: "0.15rem 0.45rem",
-                borderRadius: "6px",
-                fontSize: "0.7rem",
-                border: "none",
-                background: "transparent",
-                color: "var(--danger)",
+                padding: "0.22rem 0.6rem",
+                borderRadius: "14px",
+                fontSize: "0.74rem",
+                fontWeight: selectedTruck === "All" ? 700 : 500,
+                border: selectedTruck === "All" ? "1px solid var(--primary)" : "1px solid var(--border)",
+                background: selectedTruck === "All" ? "var(--primary-alpha)" : "var(--bg-main)",
+                color: selectedTruck === "All" ? "var(--primary)" : "var(--text-dim)",
                 cursor: "pointer",
-                fontWeight: 600,
-                marginLeft: "auto",
+                transition: "all 0.15s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
               }}
             >
-              ✕ Clear Filter
+              <span>All Trucks</span>
+              <span
+                style={{
+                  fontSize: "0.68rem",
+                  background: selectedTruck === "All" ? "var(--primary)" : "rgba(100, 116, 139, 0.18)",
+                  color: selectedTruck === "All" ? "#ffffff" : "var(--text-muted)",
+                  padding: "0.06rem 0.45rem",
+                  borderRadius: "10px",
+                  fontWeight: 800,
+                }}
+              >
+                {jobs.filter((j) => {
+                  const isArchived = j.isArchived === true;
+                  const matchesView = viewMode === "archived" ? isArchived : !isArchived;
+                  const matchesStatus = statusFilter === "All" || j.deliveryStatus === statusFilter;
+                  return matchesView && matchesStatus;
+                }).length}
+              </span>
             </button>
-          )}
-        </div>
-      )}
+
+            {allTruckPlates.map((plate) => {
+              const count = jobs.filter((j) => {
+                const isArchived = j.isArchived === true;
+                const matchesView = viewMode === "archived" ? isArchived : !isArchived;
+                const matchesStatus = statusFilter === "All" || j.deliveryStatus === statusFilter;
+                return matchesView && matchesStatus && j.truckPlate === plate;
+              }).length;
+              const isSelected = selectedTruck === plate;
+
+              return (
+                <button
+                  key={plate}
+                  type="button"
+                  onClick={() => setSelectedTruck(isSelected ? "All" : plate)}
+                  style={{
+                    padding: "0.22rem 0.6rem",
+                    borderRadius: "14px",
+                    fontSize: "0.74rem",
+                    fontWeight: isSelected ? 700 : 500,
+                    border: isSelected ? "1px solid var(--primary)" : "1px solid var(--border)",
+                    background: isSelected ? "var(--primary-alpha)" : "var(--bg-main)",
+                    color: isSelected ? "var(--primary)" : "var(--text-dim)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                  }}
+                >
+                  <span>{plate}</span>
+                  <span
+                    style={{
+                      fontSize: "0.68rem",
+                      background: isSelected ? "var(--primary)" : "rgba(100, 116, 139, 0.18)",
+                      color: isSelected ? "#ffffff" : "var(--text-muted)",
+                      padding: "0.06rem 0.45rem",
+                      borderRadius: "10px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+
+            {selectedTruck !== "All" && (
+              <button
+                type="button"
+                onClick={() => setSelectedTruck("All")}
+                style={{
+                  padding: "0.2rem 0.55rem",
+                  borderRadius: "6px",
+                  fontSize: "0.72rem",
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--danger, #ef4444)",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  marginLeft: "auto",
+                }}
+              >
+                ✕ Clear Filter
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Create Dispatch Ticket Wizard Modal */}
       {showAddForm && (

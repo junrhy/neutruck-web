@@ -399,3 +399,21 @@ CREATE TABLE IF NOT EXISTS neugate.visitor_passes (
 ALTER TABLE neutruck.unit_inspection_logs ADD COLUMN IF NOT EXISTS fuel_level_percent NUMERIC(5, 2);
 ALTER TABLE neutruck.unit_inspection_logs ADD COLUMN IF NOT EXISTS fuel_liters NUMERIC(10, 2);
 
+-- IP Access Whitelist & System Security Settings
+CREATE TABLE IF NOT EXISTS neutruck.allowed_ips (
+    id VARCHAR(64) PRIMARY KEY,
+    ip_address VARCHAR(64) NOT NULL UNIQUE,
+    label VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS neutruck.security_settings (
+    setting_key VARCHAR(64) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+

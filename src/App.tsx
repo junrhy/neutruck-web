@@ -23,6 +23,7 @@ import PrintableWaybillModal from "./components/PrintableWaybillModal";
 import UserLogin from "./components/auth/UserLogin";
 import ChangePasswordModal from "./components/auth/ChangePasswordModal";
 import GuestLandingPage from "./components/GuestLandingPage";
+import UnauthorizedIpScreen from "./components/UnauthorizedIpScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useDialog } from "./components/common/CustomDialogModal";
 import { invoke } from "@tauri-apps/api/core";
@@ -59,6 +60,44 @@ export default function App() {
   const [isLicenseValid, setIsLicenseValid] = useState<boolean>(true);
   const [checkingLicense, setCheckingLicense] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+
+  // IP Access Whitelist Security State
+  const [ipSecurity, setIpSecurity] = useState<{
+    checked: boolean;
+    whitelistEnabled: boolean;
+    isAllowed: boolean;
+    clientIp: string;
+  }>({
+    checked: false,
+    whitelistEnabled: false,
+    isAllowed: true,
+    clientIp: "",
+  });
+
+  const verifyIpSecurity = async () => {
+    try {
+      const res = await fetch("/api/security/ip-status");
+      if (res.ok) {
+        const data = await res.json();
+        setIpSecurity({
+          checked: true,
+          whitelistEnabled: Boolean(data.whitelistEnabled),
+          isAllowed: Boolean(data.isAllowed),
+          clientIp: data.clientIp || "",
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn("IP security verification warning:", err);
+    }
+    setIpSecurity((prev) => ({ ...prev, checked: true }));
+  };
+
+  useEffect(() => {
+    verifyIpSecurity();
+    const interval = setInterval(verifyIpSecurity, 45000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Business Profile
   const [companyName, setCompanyName] = useState(() => localStorage.getItem("neutruck_company_name") || "NeuTruck");
@@ -2518,12 +2557,45 @@ export default function App() {
     }
   };
 
-  if (checkingLicense || loading) {
+  if (!ipSecurity.checked || checkingLicense || loading) {
     const startupName = (companyName && companyName.trim()) || localStorage.getItem("neutruck_company_name") || "NeuTruck";
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0e1a", color: "#00d4ff", fontFamily: "sans-serif" }}>
-        <h2>🚛 Starting {startupName} Engine...</h2>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-main)",
+          color: "var(--primary)",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          transition: "background-color 0.2s ease, color 0.2s ease",
+        }}
+      >
+        <div style={{ fontSize: "2.75rem", marginBottom: "0.75rem" }}>🚛</div>
+        <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "var(--primary)", letterSpacing: "0.3px" }}>
+          Starting {startupName} Engine...
+        </h2>
+        <span style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--text-dim)" }}>
+          Initializing system modules and database connection
+        </span>
       </div>
+    );
+  }
+
+  // Enforce IP Address Whitelist (Block all pages if unauthorized)
+  if (ipSecurity.whitelistEnabled && !ipSecurity.isAllowed) {
+    return (
+      <UnauthorizedIpScreen
+        clientIp={ipSecurity.clientIp}
+        onUnlocked={() => {
+          verifyIpSecurity();
+        }}
+        onRefresh={() => {
+          verifyIpSecurity();
+        }}
+      />
     );
   }
 
