@@ -17,11 +17,16 @@ interface GeofenceMapPickerModalProps {
   onClose: () => void;
 }
 
-function createGeofenceCenterIcon(radiusMeters: number): L.DivIcon {
+function createGeofenceCenterIcon(radiusMeters: number, isLight: boolean = false): L.DivIcon {
   const radiusLabel =
     radiusMeters >= 1000
       ? `${(radiusMeters / 1000).toFixed(1).replace(/\.0$/, "")} km Radius`
       : `${radiusMeters} m Radius`;
+
+  const pillBg = isLight ? "#ffffff" : "#0f172a";
+  const pillColor = isLight ? "#0284c7" : "#00d4ff";
+  const pillBorder = isLight ? "1.5px solid #0284c7" : "1px solid #00d4ff";
+  const pillShadow = isLight ? "0 3px 10px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.6)";
 
   return L.divIcon({
     className: "custom-geofence-center-pin",
@@ -41,15 +46,15 @@ function createGeofenceCenterIcon(radiusMeters: number): L.DivIcon {
           bottom: calc(100% + 6px);
           left: 50%;
           transform: translateX(-50%);
-          background: #0f172a;
-          color: #00d4ff;
-          border: 1px solid #00d4ff;
+          background: ${pillBg};
+          color: ${pillColor};
+          border: ${pillBorder};
           padding: 3px 9px;
           border-radius: 12px;
           font-size: 11px;
           font-weight: 700;
           white-space: nowrap;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+          box-shadow: ${pillShadow};
           pointer-events: none;
           letter-spacing: 0.3px;
           box-sizing: border-box;
@@ -121,6 +126,26 @@ export default function GeofenceMapPickerModal({
   const [searchResults, setSearchResults] = useState<{ name: string; coords: [number, number] }[]>([]);
   const [locatingCurrent, setLocatingCurrent] = useState<boolean>(false);
 
+  // Dynamic Theme Mode Detection (Dark vs Light)
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  });
+
+  useEffect(() => {
+    const updateTheme = () => {
+      const isLight = document.documentElement.getAttribute("data-theme") === "light";
+      setTheme(isLight ? "light" : "dark");
+    };
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -164,7 +189,7 @@ export default function GeofenceMapPickerModal({
     }).addTo(map);
 
     // Custom glowing pinpoint icon centered directly inside the perimeter circle
-    const pinIcon = createGeofenceCenterIcon(radiusMeters);
+    const pinIcon = createGeofenceCenterIcon(radiusMeters, theme === "light");
 
     // Draggable Marker
     const marker = L.marker([selectedLat, selectedLng], {
@@ -223,11 +248,11 @@ export default function GeofenceMapPickerModal({
     };
   }, []);
 
-  // Update Circle, Marker Radius Pill & Fit Bounds when Radius Changes
+  // Update Circle, Marker Radius Pill & Fit Bounds when Radius or Theme Changes
   useEffect(() => {
     if (circleRef.current && markerRef.current) {
       circleRef.current.setRadius(radiusMeters);
-      markerRef.current.setIcon(createGeofenceCenterIcon(radiusMeters));
+      markerRef.current.setIcon(createGeofenceCenterIcon(radiusMeters, theme === "light"));
       if (mapInstanceRef.current) {
         mapInstanceRef.current.fitBounds(circleRef.current.getBounds(), {
           padding: [50, 50],
@@ -236,7 +261,7 @@ export default function GeofenceMapPickerModal({
         });
       }
     }
-  }, [radiusMeters]);
+  }, [radiusMeters, theme]);
 
   // Jump to specific search coordinate
   const handleSelectSearchLocation = (item: { name: string; coords: [number, number] }) => {
@@ -448,7 +473,10 @@ export default function GeofenceMapPickerModal({
         </div>
 
         {/* Map Container */}
-        <div style={{ position: "relative", width: "100%", height: "420px" }}>
+        <div
+          style={{ position: "relative", width: "100%", height: "420px" }}
+          className={theme === "dark" ? "dark-map-tiles" : ""}
+        >
           <div ref={mapContainerRef} style={{ width: "100%", height: "100%", zIndex: 1 }} />
 
           {/* Floating Instructions Overlay */}
@@ -458,13 +486,15 @@ export default function GeofenceMapPickerModal({
               bottom: "12px",
               left: "12px",
               zIndex: 1000,
-              background: "rgba(15, 23, 42, 0.85)",
-              border: "1px solid rgba(255,255,255,0.15)",
+              background: theme === "light" ? "rgba(255, 255, 255, 0.96)" : "rgba(15, 23, 42, 0.88)",
+              border: theme === "light" ? "1px solid #cbd5e1" : "1px solid rgba(255, 255, 255, 0.18)",
               borderRadius: "8px",
-              padding: "0.4rem 0.75rem",
-              fontSize: "0.75rem",
-              color: "var(--text-dim)",
-              backdropFilter: "blur(4px)",
+              padding: "0.45rem 0.85rem",
+              fontSize: "0.78rem",
+              fontWeight: theme === "light" ? 600 : 500,
+              color: theme === "light" ? "#0f172a" : "#f1f5f9",
+              boxShadow: theme === "light" ? "0 4px 16px rgba(0, 0, 0, 0.12)" : "0 4px 16px rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(6px)",
               pointerEvents: "none",
             }}
           >
