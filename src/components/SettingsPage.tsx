@@ -40,7 +40,7 @@ interface SettingsPageProps {
 export type SettingsTab = "profile" | "appearance" | "sms" | "users" | "security" | "database" | "storage" | "license" | "developer";
 
 const SETTINGS_TABS: { id: SettingsTab; icon: string; label: string; desc: string; adminOnly?: boolean; requireAuth?: boolean }[] = [
-  { id: "profile", icon: "🚚", label: "Company Profile", desc: "Logo, receipt & billing details", adminOnly: true },
+  { id: "profile", icon: "🚚", label: "Company Profile", desc: "Logo, receipt & billing details", requireAuth: true },
   { id: "appearance", icon: "🎨", label: "Appearance", desc: "Themes, colors & wallpaper", requireAuth: true },
   { id: "sms", icon: "💬", label: "SMS Gateway", desc: "Text message notifications", adminOnly: true },
   { id: "users", icon: "👥", label: "Users & Roles", desc: "Staff accounts & access levels", adminOnly: true },
@@ -75,11 +75,7 @@ export default function SettingsPage({
       user.permissions?.includes("*")
     )
   );
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    return user && (user.username?.toLowerCase() === "admin" || String(user.role_id) === "1" || user.permissions?.includes("*"))
-      ? "profile"
-      : "appearance";
-  });
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [tempName, setTempName] = useState(companyName);
   const [tempTag, setTempTag] = useState(companyTag);
   const [tempLogo, setTempLogo] = useState(companyLogo);
@@ -102,10 +98,19 @@ export default function SettingsPage({
     setTempApprovedByImg(sigApprovedByImg);
   }, [sigPreparedBy, sigCheckedBy, sigApprovedBy, sigPreparedByImg, sigCheckedByImg, sigApprovedByImg]);
 
-  // If non-admin user navigates to an admin-only technical tab, redirect to appearance tab
+  // If non-admin user navigates to an admin-only tab, redirect to profile tab
   useEffect(() => {
-    if (!isAdmin && (activeTab === "database" || activeTab === "storage" || activeTab === "license" || activeTab === "developer")) {
-      setActiveTab("appearance");
+    if (
+      !isAdmin &&
+      (activeTab === "sms" ||
+        activeTab === "users" ||
+        activeTab === "security" ||
+        activeTab === "database" ||
+        activeTab === "storage" ||
+        activeTab === "license" ||
+        activeTab === "developer")
+    ) {
+      setActiveTab("profile");
     }
   }, [isAdmin, activeTab]);
   const [activeSignatoryPad, setActiveSignatoryPad] = useState<{
@@ -116,7 +121,7 @@ export default function SettingsPage({
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [_isLicensedAndPaid, setIsLicensedAndPaid] = useState<boolean>(true);
-  const [serverLicenseData, setServerLicenseData] = useState<{
+  const [_serverLicenseData, setServerLicenseData] = useState<{
     allow_db_settings?: boolean;
     allow_storage_settings?: boolean;
     allow_developer_settings?: boolean;
@@ -241,13 +246,17 @@ export default function SettingsPage({
         {/* Left Sidebar Menu */}
         <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {SETTINGS_TABS.map((t) => {
-            // If not admin, completely hide DB Connection, File Storage, License & Payment, and Dev Settings
-            if (!isAdmin && (t.id === "database" || t.id === "storage" || t.id === "license" || t.id === "developer")) {
-              return null;
-            }
-
-            const isSmsHidden = !isAdmin && t.id === "sms" && !(serverLicenseData?.allow_sms_settings ?? true);
-            if (isSmsHidden) {
+            // If not admin, only show Company Profile and Appearance (hide SMS Gateway, Users & Roles, IP Whitelist, DB Connection, File Storage, License & Payment, and Dev Settings)
+            if (
+              !isAdmin &&
+              (t.id === "sms" ||
+                t.id === "users" ||
+                t.id === "security" ||
+                t.id === "database" ||
+                t.id === "storage" ||
+                t.id === "license" ||
+                t.id === "developer")
+            ) {
               return null;
             }
 
@@ -826,10 +835,10 @@ export default function SettingsPage({
           {activeTab === "appearance" && <AppearanceTabSection />}
 
           {/* TAB: SMS GATEWAY */}
-          {activeTab === "sms" && <SMSSettingsTabSection />}
+          {activeTab === "sms" && isAdmin && <SMSSettingsTabSection />}
 
           {/* TAB 3: USERS & ROLES */}
-          {activeTab === "users" && (
+          {activeTab === "users" && isAdmin && (
             <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
               <UserManagement db={db} />
               <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "0.5rem 0" }} />
@@ -838,7 +847,7 @@ export default function SettingsPage({
           )}
 
           {/* TAB: SECURITY & IP WHITELIST */}
-          {activeTab === "security" && <SecurityIpManagement />}
+          {activeTab === "security" && isAdmin && <SecurityIpManagement />}
 
           {/* TAB 4: DATABASE */}
           {activeTab === "database" && isAdmin && <DatabaseTabSection />}
