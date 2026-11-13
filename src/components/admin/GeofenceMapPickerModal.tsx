@@ -17,6 +17,82 @@ interface GeofenceMapPickerModalProps {
   onClose: () => void;
 }
 
+function createGeofenceCenterIcon(radiusMeters: number): L.DivIcon {
+  const radiusLabel =
+    radiusMeters >= 1000
+      ? `${(radiusMeters / 1000).toFixed(1).replace(/\.0$/, "")} km Radius`
+      : `${radiusMeters} m Radius`;
+
+  return L.divIcon({
+    className: "custom-geofence-center-pin",
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    html: `
+      <div style="
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justifyContent: center;
+        position: relative;
+        cursor: grab;
+      ">
+        <!-- Floating Dynamic Radius Pill -->
+        <div style="
+          position: absolute;
+          bottom: 50px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #0f172a;
+          color: #00d4ff;
+          border: 1px solid #00d4ff;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+          pointer-events: none;
+          letter-spacing: 0.3px;
+        ">
+          ${radiusLabel}
+        </div>
+
+        <!-- Outer Radar Pulse Halo -->
+        <div style="
+          position: absolute;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          border: 2px solid #00d4ff;
+          background: rgba(0, 212, 255, 0.22);
+          pointer-events: none;
+          box-shadow: 0 0 14px rgba(0, 212, 255, 0.6);
+        "></div>
+
+        <!-- Centered SVG Location Pin Badge -->
+        <div style="
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #00d4ff;
+          display: flex;
+          align-items: center;
+          justifyContent: center;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+          border: 2px solid #ffffff;
+          z-index: 2;
+        ">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="3" fill="#0f172a"></circle>
+          </svg>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export default function GeofenceMapPickerModal({
   initialLat,
   initialLng,
@@ -80,63 +156,7 @@ export default function GeofenceMapPickerModal({
     }).addTo(map);
 
     // Custom glowing pinpoint icon centered directly inside the perimeter circle
-    const pinIcon = L.divIcon({
-      className: "custom-geofence-center-pin",
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
-      html: `
-        <div style="
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justifyContent: center;
-          position: relative;
-          cursor: grab;
-        ">
-          <!-- Outer Radar Pulse Effect -->
-          <div style="
-            position: absolute;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid #00d4ff;
-            background: rgba(0, 212, 255, 0.25);
-            pointer-events: none;
-            box-shadow: 0 0 14px rgba(0, 212, 255, 0.5);
-          "></div>
-
-          <!-- Centered Pin Badge -->
-          <div style="
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: #00d4ff;
-            color: #0b1329;
-            display: flex;
-            align-items: center;
-            justifyContent: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            border: 2px solid #ffffff;
-            font-size: 15px;
-            z-index: 2;
-          ">
-            📍
-          </div>
-
-          <!-- Exact Center Point Dot -->
-          <div style="
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #ffffff;
-            z-index: 3;
-            pointer-events: none;
-          "></div>
-        </div>
-      `,
-    });
+    const pinIcon = createGeofenceCenterIcon(radiusMeters);
 
     // Draggable Marker
     const marker = L.marker([selectedLat, selectedLng], {
@@ -155,6 +175,9 @@ export default function GeofenceMapPickerModal({
       dashArray: "4, 6",
     }).addTo(map);
     circleRef.current = circle;
+
+    // Fit initial bounds to circle
+    map.fitBounds(circle.getBounds(), { padding: [50, 50], maxZoom: 17 });
 
     // Marker drag listener
     marker.on("drag", (e: any) => {
@@ -192,10 +215,18 @@ export default function GeofenceMapPickerModal({
     };
   }, []);
 
-  // Update Circle & Fit Bounds when Radius Changes
+  // Update Circle, Marker Radius Pill & Fit Bounds when Radius Changes
   useEffect(() => {
-    if (circleRef.current) {
+    if (circleRef.current && markerRef.current) {
       circleRef.current.setRadius(radiusMeters);
+      markerRef.current.setIcon(createGeofenceCenterIcon(radiusMeters));
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.fitBounds(circleRef.current.getBounds(), {
+          padding: [50, 50],
+          maxZoom: 17,
+          animate: true,
+        });
+      }
     }
   }, [radiusMeters]);
 
@@ -213,7 +244,11 @@ export default function GeofenceMapPickerModal({
     if (mapInstanceRef.current && markerRef.current && circleRef.current) {
       markerRef.current.setLatLng([lat, lng]);
       circleRef.current.setLatLng([lat, lng]);
-      mapInstanceRef.current.setView([lat, lng], 14, { animate: true });
+      mapInstanceRef.current.fitBounds(circleRef.current.getBounds(), {
+        padding: [50, 50],
+        maxZoom: 17,
+        animate: true,
+      });
     }
   };
 
@@ -235,7 +270,11 @@ export default function GeofenceMapPickerModal({
         if (mapInstanceRef.current && markerRef.current && circleRef.current) {
           markerRef.current.setLatLng([lat, lng]);
           circleRef.current.setLatLng([lat, lng]);
-          mapInstanceRef.current.setView([lat, lng], 15, { animate: true });
+          mapInstanceRef.current.fitBounds(circleRef.current.getBounds(), {
+            padding: [50, 50],
+            maxZoom: 17,
+            animate: true,
+          });
         }
       },
       (err) => {
