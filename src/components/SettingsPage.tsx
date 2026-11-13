@@ -47,7 +47,7 @@ const SETTINGS_TABS: { id: SettingsTab; icon: string; label: string; desc: strin
   { id: "security", icon: "🛡️", label: "IP Whitelist", desc: "Network IP access control", adminOnly: true },
   { id: "database", icon: "🌐", label: "DB Connection", desc: "Local & cloud database setup", adminOnly: true },
   { id: "storage", icon: "📁", label: "File Storage", desc: "Document & photo attachments", adminOnly: true },
-  { id: "license", icon: "🔑", label: "License & Payment", desc: "App key & plan status" },
+  { id: "license", icon: "🔑", label: "License & Payment", desc: "App key & plan status", adminOnly: true },
   { id: "developer", icon: "🛠️", label: "Dev Settings", desc: "Advanced integrations & webhooks", adminOnly: true },
 ];
 
@@ -99,6 +99,13 @@ export default function SettingsPage({
     setTempCheckedByImg(sigCheckedByImg);
     setTempApprovedByImg(sigApprovedByImg);
   }, [sigPreparedBy, sigCheckedBy, sigApprovedBy, sigPreparedByImg, sigCheckedByImg, sigApprovedByImg]);
+
+  // If non-admin user navigates to an admin-only technical tab, redirect to appearance tab
+  useEffect(() => {
+    if (!isAdmin && (activeTab === "database" || activeTab === "storage" || activeTab === "license" || activeTab === "developer")) {
+      setActiveTab("appearance");
+    }
+  }, [isAdmin, activeTab]);
   const [activeSignatoryPad, setActiveSignatoryPad] = useState<{
     role: "Prepared" | "Checked" | "Approved";
     title: string;
@@ -232,12 +239,13 @@ export default function SettingsPage({
         {/* Left Sidebar Menu */}
         <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {SETTINGS_TABS.map((t) => {
-            const isDbHidden = !isAdmin && t.id === "database" && !(serverLicenseData?.allow_db_settings ?? true);
-            const isStorageHidden = !isAdmin && t.id === "storage" && !(serverLicenseData?.allow_storage_settings ?? true);
-            const isDevHidden = !isAdmin && t.id === "developer" && !(serverLicenseData?.allow_developer_settings ?? true);
-            const isSmsHidden = !isAdmin && t.id === "sms" && !(serverLicenseData?.allow_sms_settings ?? true);
+            // If not admin, completely hide DB Connection, File Storage, License & Payment, and Dev Settings
+            if (!isAdmin && (t.id === "database" || t.id === "storage" || t.id === "license" || t.id === "developer")) {
+              return null;
+            }
 
-            if (isDbHidden || isStorageHidden || isDevHidden || isSmsHidden) {
+            const isSmsHidden = !isAdmin && t.id === "sms" && !(serverLicenseData?.allow_sms_settings ?? true);
+            if (isSmsHidden) {
               return null;
             }
 
@@ -831,18 +839,18 @@ export default function SettingsPage({
           {activeTab === "security" && <SecurityIpManagement />}
 
           {/* TAB 4: DATABASE */}
-          {activeTab === "database" && <DatabaseTabSection />}
+          {activeTab === "database" && isAdmin && <DatabaseTabSection />}
 
           {/* TAB 3: STORAGE */}
-          {activeTab === "storage" && <StorageTabSection />}
+          {activeTab === "storage" && isAdmin && <StorageTabSection />}
 
           {/* TAB 4: LICENSE */}
-          {activeTab === "license" && (
+          {activeTab === "license" && isAdmin && (
             <LicenseTabSection onVerificationChange={(isOk) => setIsLicensedAndPaid(isOk)} />
           )}
 
           {/* TAB 5: DEVELOPER */}
-          {activeTab === "developer" && <DevSettingsTabSection />}
+          {activeTab === "developer" && isAdmin && <DevSettingsTabSection />}
 
         </div>
       </div>
