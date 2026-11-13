@@ -79,30 +79,63 @@ export default function GeofenceMapPickerModal({
       maxZoom: 19,
     }).addTo(map);
 
-    // Custom glowing pinpoint icon
+    // Custom glowing pinpoint icon centered directly inside the perimeter circle
     const pinIcon = L.divIcon({
-      className: "custom-geofence-pin",
+      className: "custom-geofence-center-pin",
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
       html: `
-        <div style="position: relative; transform: translate(-50%, -100%); cursor: grab;">
+        <div style="
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justifyContent: center;
+          position: relative;
+          cursor: grab;
+        ">
+          <!-- Outer Radar Pulse Effect -->
           <div style="
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid #00d4ff;
+            background: rgba(0, 212, 255, 0.25);
+            pointer-events: none;
+            box-shadow: 0 0 14px rgba(0, 212, 255, 0.5);
+          "></div>
+
+          <!-- Centered Pin Badge -->
+          <div style="
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
             background: #00d4ff;
             color: #0b1329;
-            width: 38px;
-            height: 38px;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
             display: flex;
             align-items: center;
             justifyContent: center;
-            box-shadow: 0 4px 14px rgba(0,212,255,0.6);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
             border: 2px solid #ffffff;
+            font-size: 15px;
+            z-index: 2;
           ">
-            <span style="transform: rotate(45deg); font-size: 18px;">📍</span>
+            📍
           </div>
+
+          <!-- Exact Center Point Dot -->
+          <div style="
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #ffffff;
+            z-index: 3;
+            pointer-events: none;
+          "></div>
         </div>
       `,
-      iconSize: [0, 0],
-      iconAnchor: [0, 0],
     });
 
     // Draggable Marker
@@ -255,6 +288,13 @@ export default function GeofenceMapPickerModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <style>{`
+          .custom-geofence-center-pin {
+            background: transparent !important;
+            border: none !important;
+          }
+        `}</style>
+
         {/* Modal Header */}
         <div
           style={{
