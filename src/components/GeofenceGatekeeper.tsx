@@ -192,3 +192,4 @@ export default function GeofenceGatekeeper({
 
   return <>{children}</>;
 }
+
