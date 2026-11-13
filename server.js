@@ -604,7 +604,7 @@ app.get("/api/backup/export", async (req, res) => {
 
   try {
     const backupData = {
-      app: "NeuTruck",
+      app: "FleetLogistics",
       version: "1.0",
       exported_at: new Date().toISOString(),
       exported_by: exportedBy,
@@ -640,7 +640,7 @@ app.get("/api/backup/export", async (req, res) => {
     // Format filename with local timestamp
     const now = new Date();
     const pad = (n) => String(n).padStart(2, "0");
-    const filename = `neutruck-backup-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.json`;
+    const filename = `data-backup-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.json`;
 
     // Record into backup_history table
     const backupId = "bkp_" + Date.now();

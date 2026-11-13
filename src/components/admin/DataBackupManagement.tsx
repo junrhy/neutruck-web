@@ -126,7 +126,7 @@ export default function DataBackupManagement() {
       }
 
       // Extract filename from Content-Disposition if present
-      let filename = `neutruck-backup-${Date.now()}.json`;
+      let filename = `data-backup-${Date.now()}.json`;
       const disposition = res.headers.get("Content-Disposition");
       if (disposition && disposition.includes("filename=")) {
         const match = disposition.match(/filename="?([^"]+)"?/);
@@ -201,7 +201,7 @@ export default function DataBackupManagement() {
   // Trigger Import Execution
   const handleExecuteImport = async () => {
     if (!parsedBackupData || !validationResult || !validationResult.valid) {
-      showAlert("Please choose and validate a valid NeuTruck backup file before importing.", "Validation Required");
+      showAlert("Please choose and validate a valid system backup file before importing.", "Validation Required");
       return;
     }
 
@@ -501,7 +501,7 @@ export default function DataBackupManagement() {
             <span>📤</span> Import Backup Data with Duplicate Validation
           </h4>
           <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-dim)" }}>
-            Select a NeuTruck backup JSON file. The system will pre-validate all records to prevent conflicts, format errors, and duplicates.
+            Select a system backup JSON file. The system will pre-validate all records to prevent conflicts, format errors, and duplicates.
           </p>
         </div>
 
@@ -524,10 +524,10 @@ export default function DataBackupManagement() {
           >
             <span style={{ fontSize: "2rem" }}>📁</span>
             <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-main)" }}>
-              Click to select or drag &amp; drop a NeuTruck backup JSON file
+              Click to select or drag &amp; drop a system backup JSON file
             </span>
             <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-              Only valid NeuTruck .json backup files are accepted
+              Only valid .json backup files are accepted
             </span>
             <input
               ref={fileInputRef}
@@ -800,7 +800,7 @@ export default function DataBackupManagement() {
               <span>📜</span> Backup Generation &amp; Import History
             </h4>
             <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-dim)" }}>
-              Audit trail of every snapshot generated and backup file imported into NeuTruck.
+              Audit trail of every snapshot generated and backup file imported into the system.
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
