@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Database from "@tauri-apps/plugin-sql";
 import { User, Role } from "../../types";
+import GeofenceMapPickerModal from "./GeofenceMapPickerModal";
 
 interface UserManagementProps {
   db: Database | null;
@@ -15,6 +16,7 @@ export default function UserManagement({ db }: UserManagementProps) {
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [userPassword, setUserPassword] = useState("password123");
   const [fetchingGps, setFetchingGps] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -446,15 +448,26 @@ export default function UserManagement({ db }: UserManagementProps) {
                       <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>meters</span>
                     </div>
 
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-sm"
-                      onClick={handleGetCurrentLocation}
-                      disabled={fetchingGps}
-                      style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
-                    >
-                      <span>📍</span> {fetchingGps ? "Acquiring Device GPS..." : "Set to My Current Location"}
-                    </button>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => setShowMapPicker(true)}
+                        style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+                      >
+                        <span>🗺️</span> Select on Map
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={handleGetCurrentLocation}
+                        disabled={fetchingGps}
+                        style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+                      >
+                        <span>📍</span> {fetchingGps ? "Acquiring Device GPS..." : "Set Current Location"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -580,6 +593,26 @@ export default function UserManagement({ db }: UserManagementProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showMapPicker && (
+        <GeofenceMapPickerModal
+          initialLat={editingUser?.allowed_latitude ?? null}
+          initialLng={editingUser?.allowed_longitude ?? null}
+          initialRadius={editingUser?.allowed_radius_meters || 1000}
+          initialLabel={editingUser?.geofence_label || ""}
+          onConfirm={({ latitude, longitude, radiusMeters, label }) => {
+            setEditingUser((prev) => ({
+              ...prev!,
+              geofence_enabled: true,
+              allowed_latitude: latitude,
+              allowed_longitude: longitude,
+              allowed_radius_meters: radiusMeters,
+              geofence_label: label,
+            }));
+          }}
+          onClose={() => setShowMapPicker(false)}
+        />
       )}
     </div>
   );
