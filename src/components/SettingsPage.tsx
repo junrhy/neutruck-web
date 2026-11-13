@@ -72,12 +72,14 @@ export default function SettingsPage({
       user.username?.toLowerCase() === "admin" ||
       String(user.role_id) === "1" ||
       user.role_id === "admin" ||
-      user.permissions?.includes("*") ||
-      user.permissions?.includes("settings") ||
-      user.permissions?.some((p) => p.startsWith("settings"))
+      user.permissions?.includes("*")
     )
   );
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    return user && (user.username?.toLowerCase() === "admin" || String(user.role_id) === "1" || user.permissions?.includes("*"))
+      ? "profile"
+      : "appearance";
+  });
   const [tempName, setTempName] = useState(companyName);
   const [tempTag, setTempTag] = useState(companyTag);
   const [tempLogo, setTempLogo] = useState(companyLogo);
