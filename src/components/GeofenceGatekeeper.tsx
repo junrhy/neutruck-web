@@ -130,9 +130,29 @@ export default function GeofenceGatekeeper({
     verifyLocation();
     if (!isEnforced || hasBypass) return;
 
+    // Listen in real-time if the user unblocks location permissions in their browser settings
+    let permStatusObj: PermissionStatus | null = null;
+    if (typeof navigator !== "undefined" && navigator.permissions && navigator.permissions.query) {
+      navigator.permissions
+        .query({ name: "geolocation" })
+        .then((status) => {
+          permStatusObj = status;
+          permStatusObj.onchange = () => {
+            // Automatically re-verify location the instant user flips permission in URL bar
+            verifyLocation();
+          };
+        })
+        .catch(() => {});
+    }
+
     // Periodic background check every 3 minutes
     const interval = setInterval(verifyLocation, 180000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (permStatusObj) {
+        permStatusObj.onchange = null;
+      }
+    };
   }, [verifyLocation, isEnforced, hasBypass]);
 
   const handleAdminBypass = () => {

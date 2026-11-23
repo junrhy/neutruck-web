@@ -183,101 +183,195 @@ export default function UnauthorizedGeofenceScreen({
         </div>
 
         {/* Clear, Human-Friendly Status Card */}
-        <div
-          style={{
-            background: "rgba(0, 0, 0, 0.15)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "1.15rem 1.25rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.9rem",
-          }}
-        >
+        {isPermissionDenied ? (
           <div
             style={{
+              background: "rgba(0, 0, 0, 0.2)",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              borderRadius: "14px",
+              padding: "1.25rem",
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "0.85rem",
+              flexDirection: "column",
+              gap: "0.9rem",
             }}
           >
-            <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-              🏢 Required Location:
-            </span>
-            <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
-              {targetLabel}
-            </span>
-          </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "1.2rem" }}>🔒</span>
+              <span style={{ fontWeight: 600, color: "var(--warning)", fontSize: "0.95rem" }}>
+                Location Permission is Blocked
+              </span>
+            </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "0.85rem",
-            }}
-          >
-            <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-              📍 Current Status:
-            </span>
-            <span
+            <p style={{ margin: 0, fontSize: "0.84rem", color: "var(--text-dim)", lineHeight: "1.5" }}>
+              By browser security design, websites cannot automatically force the permission popup back open once it was blocked. You can re-enable it in 2 quick steps:
+            </p>
+
+            <div
               style={{
-                fontWeight: 600,
-                color:
-                  distanceMeters !== null && distanceMeters <= allowedRadius
-                    ? "#10b981"
-                    : "#ef4444",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+                background: "rgba(255, 255, 255, 0.03)",
+                padding: "0.85rem",
+                borderRadius: "10px",
+                border: "1px solid var(--border)",
               }}
             >
-              {formattedDistance}
-            </span>
-          </div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.65rem", fontSize: "0.83rem" }}>
+                <span
+                  style={{
+                    background: "var(--primary)",
+                    color: "#000",
+                    borderRadius: "50%",
+                    width: "22px",
+                    height: "22px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    flexShrink: 0,
+                    marginTop: "1px",
+                  }}
+                >
+                  1
+                </span>
+                <span>
+                  Click the <strong>padlock (🔒)</strong> or <strong>tune / site settings</strong> icon at the far left of your browser's address bar.
+                </span>
+              </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "0.85rem",
-            }}
-          >
-            <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-              🎯 Allowed Perimeter:
-            </span>
-            <span style={{ color: "var(--primary)", fontWeight: 500 }}>
-              Within {formattedRadius}
-            </span>
-          </div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.65rem", fontSize: "0.83rem" }}>
+                <span
+                  style={{
+                    background: "var(--primary)",
+                    color: "#000",
+                    borderRadius: "50%",
+                    width: "22px",
+                    height: "22px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    flexShrink: 0,
+                    marginTop: "1px",
+                  }}
+                >
+                  2
+                </span>
+                <span>
+                  Change <strong>Location</strong> from <em>Block</em> to <strong>Allow</strong>.
+                </span>
+              </div>
+            </div>
 
-          {/* Friendly Guidance Box */}
-          <div
-            style={{
-              marginTop: "0.25rem",
-              padding: "0.75rem 0.9rem",
-              background: isPermissionDenied
-                ? "rgba(245, 158, 11, 0.1)"
-                : "rgba(59, 130, 246, 0.08)",
-              borderRadius: "8px",
-              border: isPermissionDenied
-                ? "1px solid rgba(245, 158, 11, 0.25)"
-                : "1px solid rgba(59, 130, 246, 0.2)",
-              fontSize: "0.8rem",
-              color: isPermissionDenied ? "#f59e0b" : "var(--text-dim)",
-              lineHeight: "1.45",
-            }}
-          >
-            {isPermissionDenied ? (
+            <div
+              style={{
+                padding: "0.65rem 0.85rem",
+                background: "rgba(16, 185, 129, 0.12)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                borderRadius: "8px",
+                fontSize: "0.8rem",
+                color: "#10b981",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <span>⚡</span>
               <span>
-                💡 <strong>How to fix:</strong> Click the <strong>lock / site settings icon (🔒)</strong> in your browser’s address bar, turn <strong>Location</strong> to <em>Allow</em>, and refresh.
+                NeuTruck will <strong>automatically detect</strong> when you flip the switch and verify your location!
               </span>
-            ) : (
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              background: "rgba(0, 0, 0, 0.15)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "1.15rem 1.25rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.9rem",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: "0.85rem",
+              }}
+            >
+              <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                🏢 Required Location:
+              </span>
+              <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
+                {targetLabel}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: "0.85rem",
+              }}
+            >
+              <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                📍 Current Status:
+              </span>
+              <span
+                style={{
+                  fontWeight: 600,
+                  color:
+                    distanceMeters !== null && distanceMeters <= allowedRadius
+                      ? "#10b981"
+                      : "#ef4444",
+                }}
+              >
+                {formattedDistance}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: "0.85rem",
+              }}
+            >
+              <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                🎯 Allowed Perimeter:
+              </span>
+              <span style={{ color: "var(--primary)", fontWeight: 500 }}>
+                Within {formattedRadius}
+              </span>
+            </div>
+
+            {/* Friendly Guidance Box */}
+            <div
+              style={{
+                marginTop: "0.25rem",
+                padding: "0.75rem 0.9rem",
+                background: "rgba(59, 130, 246, 0.08)",
+                borderRadius: "8px",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+                fontSize: "0.8rem",
+                color: "var(--text-dim)",
+                lineHeight: "1.45",
+              }}
+            >
               <span>
                 💡 <strong>Already at the office?</strong> Ensure Wi-Fi is turned on to improve device accuracy, then tap <em>Refresh Location</em>. If you are working off-site, a supervisor can approve your session below.
               </span>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Action Buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
