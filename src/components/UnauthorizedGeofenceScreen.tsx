@@ -281,7 +281,7 @@ export default function UnauthorizedGeofenceScreen({
             >
               <span>⚡</span>
               <span>
-                NeuTruck will <strong>automatically detect</strong> when you flip the switch and verify your location!
+                The system will <strong>automatically detect</strong> when you flip the switch and verify your location!
               </span>
             </div>
           </div>
