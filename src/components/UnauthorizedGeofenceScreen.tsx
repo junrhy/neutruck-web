@@ -32,6 +32,7 @@ export default function UnauthorizedGeofenceScreen({
   onLogout,
 }: UnauthorizedGeofenceScreenProps) {
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showTechDetails, setShowTechDetails] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
@@ -71,11 +72,27 @@ export default function UnauthorizedGeofenceScreen({
     }
   };
 
-  const isPermissionDenied =
+  const isPermissionDenied = Boolean(
     geoError &&
-    (geoError.toLowerCase().includes("denied") ||
-      geoError.toLowerCase().includes("permission") ||
-      geoError.toLowerCase().includes("blocked"));
+      (geoError.toLowerCase().includes("denied") ||
+        geoError.toLowerCase().includes("permission") ||
+        geoError.toLowerCase().includes("blocked"))
+  );
+
+  // Friendly human distance description
+  const formattedDistance =
+    distanceMeters !== null
+      ? distanceMeters >= 1000
+        ? `approx. ${(distanceMeters / 1000).toFixed(1)} km away`
+        : `approx. ${Math.round(distanceMeters)} meters away`
+      : "Location not detected";
+
+  const formattedRadius =
+    allowedRadius >= 1000
+      ? `${(allowedRadius / 1000).toFixed(1)} km`
+      : `${allowedRadius} meters`;
+
+  const displayName = user.name || user.username || "Staff";
 
   return (
     <div
@@ -93,109 +110,173 @@ export default function UnauthorizedGeofenceScreen({
       <div
         style={{
           width: "100%",
-          maxWidth: "580px",
-          background: "var(--bg-card, rgba(255, 255, 255, 0.03))",
+          maxWidth: "520px",
+          background: "var(--bg-card, rgba(255, 255, 255, 0.04))",
           border: "1px solid var(--border)",
-          borderRadius: "16px",
+          borderRadius: "18px",
           padding: "2.25rem",
-          boxShadow: "0 20px 40px rgba(0,0,0,0.45)",
+          boxShadow: "0 20px 45px rgba(0, 0, 0, 0.35)",
           display: "flex",
           flexDirection: "column",
-          gap: "1.5rem",
+          gap: "1.35rem",
         }}
       >
-        {/* Header Icon & Title */}
+        {/* Header Icon & Friendly Title */}
         <div style={{ textAlign: "center" }}>
           <div
             style={{
-              width: "72px",
-              height: "72px",
+              width: "68px",
+              height: "68px",
               borderRadius: "50%",
-              background: isPermissionDenied ? "rgba(245, 158, 11, 0.12)" : "rgba(239, 68, 68, 0.12)",
-              border: isPermissionDenied ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
+              background: isPermissionDenied
+                ? "rgba(245, 158, 11, 0.12)"
+                : "rgba(239, 68, 68, 0.12)",
+              border: isPermissionDenied
+                ? "1px solid rgba(245, 158, 11, 0.3)"
+                : "1px solid rgba(239, 68, 68, 0.3)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "2.2rem",
+              fontSize: "2rem",
               margin: "0 auto 1rem auto",
             }}
           >
-            {isPermissionDenied ? "📍⚠️" : "📍🔒"}
+            {isPermissionDenied ? "📍⚠️" : "🏢🔒"}
           </div>
-          <h2 style={{ margin: "0 0 0.5rem 0", fontSize: "1.35rem", fontWeight: 700, color: "var(--text-main)" }}>
-            {isPermissionDenied ? "Location Permission Required" : "Outside Authorized Location"}
-          </h2>
-          <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-dim)", lineHeight: "1.5" }}>
+
+          <h2
+            style={{
+              margin: "0 0 0.5rem 0",
+              fontSize: "1.35rem",
+              fontWeight: 700,
+              color: "var(--text-main)",
+              letterSpacing: "-0.01em",
+            }}
+          >
             {isPermissionDenied
-              ? `Staff account "${user.name}" (${user.username}) has geolocation access enforcement enabled. Please allow device location access to verify physical presence at ${targetLabel}.`
-              : `Staff account "${user.name}" (${user.username}) is restricted to access the application only while within the designated perimeter of ${targetLabel}.`}
+              ? "Location Permission Needed"
+              : "You're Outside the Work Location"}
+          </h2>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "0.9rem",
+              color: "var(--text-dim)",
+              lineHeight: "1.55",
+            }}
+          >
+            {isPermissionDenied ? (
+              <>
+                Hi <strong>{displayName}</strong>, please allow your browser to share
+                your location so we can verify you are on-site at{" "}
+                <strong style={{ color: "var(--text-main)" }}>{targetLabel}</strong>.
+              </>
+            ) : (
+              <>
+                Hi <strong>{displayName}</strong>, this account can only be accessed while
+                on-site at{" "}
+                <strong style={{ color: "var(--text-main)" }}>{targetLabel}</strong>.
+              </>
+            )}
           </p>
         </div>
 
-        {/* Location Status Breakdown Card */}
+        {/* Clear, Human-Friendly Status Card */}
         <div
           style={{
-            background: "rgba(0, 0, 0, 0.2)",
+            background: "rgba(0, 0, 0, 0.15)",
             border: "1px solid var(--border)",
-            borderRadius: "10px",
-            padding: "1.25rem",
+            borderRadius: "12px",
+            padding: "1.15rem 1.25rem",
             display: "flex",
             flexDirection: "column",
-            gap: "0.85rem",
+            gap: "0.9rem",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.825rem" }}>
-            <span style={{ color: "var(--text-dim)" }}>Authorized Location:</span>
-            <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{targetLabel}</span>
-          </div>
-
-          {user.allowed_latitude !== null && user.allowed_latitude !== undefined && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.825rem" }}>
-              <span style={{ color: "var(--text-dim)" }}>Target Coordinates:</span>
-              <span style={{ fontFamily: "monospace", color: "var(--text-main)" }}>
-                {user.allowed_latitude?.toFixed(5)}, {user.allowed_longitude?.toFixed(5)}
-              </span>
-            </div>
-          )}
-
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.825rem" }}>
-            <span style={{ color: "var(--text-dim)" }}>Allowed Perimeter:</span>
-            <span style={{ fontWeight: 600, color: "var(--primary)" }}>Within {allowedRadius} meters</span>
-          </div>
-
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: "0.75rem", display: "flex", justifyContent: "space-between", fontSize: "0.825rem" }}>
-            <span style={{ color: "var(--text-dim)" }}>Current Detected Coordinates:</span>
-            <span style={{ fontFamily: "monospace", color: currentLat !== null ? "var(--text-main)" : "#f59e0b" }}>
-              {currentLat !== null && currentLng !== null
-                ? `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`
-                : "Unavailable"}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.85rem",
+            }}
+          >
+            <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              🏢 Required Location:
+            </span>
+            <span style={{ fontWeight: 600, color: "var(--text-main)" }}>
+              {targetLabel}
             </span>
           </div>
 
-          {distanceMeters !== null && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.825rem" }}>
-              <span style={{ color: "var(--text-dim)" }}>Distance from Facility:</span>
-              <span style={{ fontWeight: 700, color: distanceMeters <= allowedRadius ? "#10b981" : "#ef4444" }}>
-                {(distanceMeters / 1000).toFixed(2)} km ({Math.round(distanceMeters).toLocaleString()} m away)
-              </span>
-            </div>
-          )}
-
-          {geoError && (
-            <div
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.85rem",
+            }}
+          >
+            <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              📍 Current Status:
+            </span>
+            <span
               style={{
-                marginTop: "0.25rem",
-                padding: "0.6rem 0.85rem",
-                background: "rgba(245, 158, 11, 0.12)",
-                borderRadius: "6px",
-                border: "1px solid rgba(245, 158, 11, 0.25)",
-                fontSize: "0.78rem",
-                color: "#f59e0b",
+                fontWeight: 600,
+                color:
+                  distanceMeters !== null && distanceMeters <= allowedRadius
+                    ? "#10b981"
+                    : "#ef4444",
               }}
             >
-              ⚠️ {geoError}
-            </div>
-          )}
+              {formattedDistance}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.85rem",
+            }}
+          >
+            <span style={{ color: "var(--text-dim)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              🎯 Allowed Perimeter:
+            </span>
+            <span style={{ color: "var(--primary)", fontWeight: 500 }}>
+              Within {formattedRadius}
+            </span>
+          </div>
+
+          {/* Friendly Guidance Box */}
+          <div
+            style={{
+              marginTop: "0.25rem",
+              padding: "0.75rem 0.9rem",
+              background: isPermissionDenied
+                ? "rgba(245, 158, 11, 0.1)"
+                : "rgba(59, 130, 246, 0.08)",
+              borderRadius: "8px",
+              border: isPermissionDenied
+                ? "1px solid rgba(245, 158, 11, 0.25)"
+                : "1px solid rgba(59, 130, 246, 0.2)",
+              fontSize: "0.8rem",
+              color: isPermissionDenied ? "#f59e0b" : "var(--text-dim)",
+              lineHeight: "1.45",
+            }}
+          >
+            {isPermissionDenied ? (
+              <span>
+                💡 <strong>How to fix:</strong> Click the <strong>lock / site settings icon (🔒)</strong> in your browser’s address bar, turn <strong>Location</strong> to <em>Allow</em>, and refresh.
+              </span>
+            ) : (
+              <span>
+                💡 <strong>Already at the office?</strong> Ensure Wi-Fi is turned on to improve device accuracy, then tap <em>Refresh Location</em>. If you are working off-site, a supervisor can approve your session below.
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -204,7 +285,17 @@ export default function UnauthorizedGeofenceScreen({
             type="button"
             className="btn btn-primary"
             onClick={onRetry}
-            style={{ width: "100%", padding: "0.75rem", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+            style={{
+              width: "100%",
+              padding: "0.75rem",
+              fontSize: "0.925rem",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              borderRadius: "10px",
+            }}
           >
             <span>🔄</span> Refresh Location Check
           </button>
@@ -214,45 +305,121 @@ export default function UnauthorizedGeofenceScreen({
               type="button"
               className="btn btn-outline"
               onClick={() => setShowAdminModal(true)}
-              style={{ padding: "0.65rem", fontSize: "0.85rem" }}
+              style={{
+                padding: "0.65rem",
+                fontSize: "0.85rem",
+                borderRadius: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.4rem",
+              }}
+              title="Request a manager or administrator to authorize off-site access"
             >
-              🔓 Admin Unlock
+              <span>🔓</span> Supervisor Unlock
             </button>
             <button
               type="button"
               className="btn btn-danger"
               onClick={onLogout}
-              style={{ padding: "0.65rem", fontSize: "0.85rem" }}
+              style={{
+                padding: "0.65rem",
+                fontSize: "0.85rem",
+                borderRadius: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.4rem",
+              }}
             >
-              🚪 Sign Out
+              <span>🚪</span> Sign Out
             </button>
           </div>
         </div>
 
-        {/* Browser Permission Help */}
-        {isPermissionDenied && (
-          <div
+        {/* Collapsible Technical / GPS Details for IT / Admins */}
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: "0.5rem" }}>
+          <button
+            type="button"
+            onClick={() => setShowTechDetails(!showTechDetails)}
             style={{
-              padding: "0.85rem 1rem",
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
               fontSize: "0.78rem",
-              color: "var(--text-dim)",
-              lineHeight: "1.4",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              padding: "0.25rem 0",
+              margin: "0 auto",
             }}
           >
-            <strong>💡 How to Enable Location Access:</strong>
-            <ol style={{ margin: "0.35rem 0 0 1.25rem", padding: 0 }}>
-              <li>Click the <strong>Lock (🔒)</strong> or <strong>Site Settings</strong> icon in your browser URL bar.</li>
-              <li>Find <strong>Location</strong> and switch it from <em>Block</em> to <strong>Allow</strong>.</li>
-              <li>Click <strong>Refresh Location Check</strong> above.</li>
-            </ol>
-          </div>
-        )}
+            <span>⚙️</span>
+            <span>{showTechDetails ? "Hide Technical GPS Details" : "View Technical GPS Details"}</span>
+            <span style={{ fontSize: "0.7rem" }}>{showTechDetails ? "▲" : "▼"}</span>
+          </button>
+
+          {showTechDetails && (
+            <div
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.85rem 1rem",
+                background: "rgba(0, 0, 0, 0.25)",
+                borderRadius: "8px",
+                border: "1px solid var(--border)",
+                fontSize: "0.76rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
+                fontFamily: "monospace",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--text-dim)" }}>Target Coordinates:</span>
+                <span style={{ color: "var(--text-main)" }}>
+                  {user.allowed_latitude?.toFixed(5) ?? "N/A"},{" "}
+                  {user.allowed_longitude?.toFixed(5) ?? "N/A"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--text-dim)" }}>Detected Coordinates:</span>
+                <span style={{ color: currentLat !== null ? "var(--text-main)" : "#f59e0b" }}>
+                  {currentLat !== null && currentLng !== null
+                    ? `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`
+                    : "Unavailable"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--text-dim)" }}>Exact Distance:</span>
+                <span style={{ color: "var(--text-main)" }}>
+                  {distanceMeters !== null
+                    ? `${Math.round(distanceMeters).toLocaleString()} meters`
+                    : "N/A"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--text-dim)" }}>Allowed Radius:</span>
+                <span style={{ color: "var(--text-main)" }}>{allowedRadius} meters</span>
+              </div>
+              {geoError && (
+                <div
+                  style={{
+                    borderTop: "1px solid rgba(255,255,255,0.08)",
+                    paddingTop: "0.4rem",
+                    color: "#f59e0b",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  Error: {geoError}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Admin Emergency Unlock Modal */}
+      {/* Admin / Supervisor Emergency Unlock Modal */}
       {showAdminModal && (
         <div
           style={{
@@ -267,6 +434,7 @@ export default function UnauthorizedGeofenceScreen({
             justifyContent: "center",
             zIndex: 99999,
             padding: "1rem",
+            backdropFilter: "blur(4px)",
           }}
           onClick={() => setShowAdminModal(false)}
         >
@@ -274,11 +442,11 @@ export default function UnauthorizedGeofenceScreen({
             style={{
               background: "var(--bg-main)",
               border: "1px solid var(--border)",
-              borderRadius: "14px",
+              borderRadius: "16px",
               padding: "1.75rem",
               width: "100%",
               maxWidth: "420px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+              boxShadow: "0 20px 45px rgba(0,0,0,0.5)",
               display: "flex",
               flexDirection: "column",
               gap: "1.25rem",
@@ -286,20 +454,21 @@ export default function UnauthorizedGeofenceScreen({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h4 style={{ margin: 0, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <span>🔓</span> Administrator Override
+              <h4 style={{ margin: 0, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "1.1rem" }}>
+                <span>🔓</span> Supervisor / Admin Approval
               </h4>
               <button
                 type="button"
                 className="btn btn-outline btn-xs"
                 onClick={() => setShowAdminModal(false)}
+                style={{ borderRadius: "50%", width: "28px", height: "28px", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 ✕
               </button>
             </div>
 
-            <p style={{ margin: 0, fontSize: "0.825rem", color: "var(--text-dim)" }}>
-              An authorized administrator may grant a temporary geofence bypass for this workstation session.
+            <p style={{ margin: 0, fontSize: "0.825rem", color: "var(--text-dim)", lineHeight: "1.45" }}>
+              An authorized supervisor or administrator can approve a temporary session bypass to allow working outside the designated facility.
             </p>
 
             {adminError && (
@@ -308,7 +477,7 @@ export default function UnauthorizedGeofenceScreen({
                   padding: "0.6rem 0.85rem",
                   background: "rgba(239, 68, 68, 0.15)",
                   border: "1px solid rgba(239, 68, 68, 0.3)",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   color: "#ef4444",
                   fontSize: "0.8rem",
                 }}
@@ -319,7 +488,7 @@ export default function UnauthorizedGeofenceScreen({
 
             <form onSubmit={handleAdminUnlock} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: "0.8rem" }}>Admin Username</label>
+                <label className="form-label" style={{ fontSize: "0.8rem" }}>Admin / Manager Username</label>
                 <input
                   type="text"
                   required
@@ -332,7 +501,7 @@ export default function UnauthorizedGeofenceScreen({
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: "0.8rem" }}>Admin Password</label>
+                <label className="form-label" style={{ fontSize: "0.8rem" }}>Admin / Manager Password</label>
                 <input
                   type="password"
                   required
@@ -357,7 +526,7 @@ export default function UnauthorizedGeofenceScreen({
                   className="btn btn-primary btn-sm"
                   disabled={adminLoading}
                 >
-                  {adminLoading ? "Verifying..." : "Authorize Session"}
+                  {adminLoading ? "Verifying..." : "Approve Session"}
                 </button>
               </div>
             </form>
@@ -367,4 +536,5 @@ export default function UnauthorizedGeofenceScreen({
     </div>
   );
 }
+
 
